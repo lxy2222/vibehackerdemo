@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #fdfdfe;
+  --title: #452255;
+  --primary: #0b8571;
+  --accent: #ef8d37;
+  --muted: #8ecccd;
+  --line: #d7edea;
+  --body: #3d2a45;
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  background: var(--primary);
+  color: white;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.btn-primary:disabled {
+  opacity: 0.55;
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  border: 1px solid var(--line);
+  color: var(--title);
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: white;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.95rem;
+  color: var(--title);
+  background: white;
+}
+
+.chip {
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  padding: 0.4rem 0.85rem;
+  font-size: 0.875rem;
+  background: white;
+  color: var(--title);
+}
+
+.chip-on {
+  background: #e7f6f3;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.slide-frame {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  background: #fdfdfe;
+  box-shadow: 0 10px 30px rgb(69 34 85 / 0.06);
+}
+
+.slide-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 0.28rem;
+  background: var(--primary);
+}
+
+body {
+  background: var(--bg);
+  color: var(--title);
+}
