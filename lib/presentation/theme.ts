@@ -1,11 +1,14 @@
 export const theme = {
-  bg: "FDFDFE",
-  title: "452255",
-  primary: "0B8571",
-  accent: "EF8D37",
-  secondary: "CFAD20",
-  muted: "8ECCCD",
-  body: "3D2A45",
+  bg: "FCFFFF",
+  title: "424F8F",
+  primary: "424F8F",
+  accent: "E3734D",
+  secondary: "D8B415",
+  muted: "A0A4AC",
+  body: "424F8F",
+  cream: "ECCFA7",
+  lavender: "E8E1EB",
+  olive: "896740",
   font: "Microsoft YaHei",
 } as const;
 

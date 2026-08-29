@@ -12,17 +12,27 @@ async function readError(response: Response) {
 
 export function PreviewStudio({ project }: { project: ProjectDTO }) {
   const router = useRouter();
+  const slideCount = project.deck?.slides.length ?? 6;
   const [feedback, setFeedback] = useState("");
-  const [pageCount, setPageCount] = useState(project.deck?.slides.length ?? 6);
+  const [pageCount, setPageCount] = useState(slideCount);
+  const [seenSlideCount, setSeenSlideCount] = useState(slideCount);
+  const [pageCountTouched, setPageCountTouched] = useState(false);
   const [error, setError] = useState<string | null>(project.errorMessage);
   const [pending, startTransition] = useTransition();
   const [exporting, startExport] = useTransition();
+
+  if (slideCount !== seenSlideCount) {
+    setSeenSlideCount(slideCount);
+    if (!pageCountTouched) {
+      setPageCount(slideCount);
+    }
+  }
 
   const deck = project.deck;
   if (!deck) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-red-700">{project.errorMessage ?? "还没有模版"}</p>
+        <p className="text-sm text-[var(--cta)]">{project.errorMessage ?? "还没有模版"}</p>
         <a className="btn-secondary" href="/">
           返回创建
         </a>
@@ -82,22 +92,22 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
         ))}
       </div>
 
-      <section className="space-y-3 rounded-2xl border border-[var(--line)] bg-white p-5">
+      <section className="panel space-y-3 p-5">
         <h2 className="text-sm font-medium">不满意？写意见重生成</h2>
         <textarea
           className="field min-h-24"
           value={feedback}
           onChange={(event) => setFeedback(event.target.value)}
-          placeholder="例如：漏斗太细了、进度写轻了、技术实现再少讲一点"
+          placeholder="例如：进度写轻了、技术实现再少讲一点"
         />
         <button className="btn-primary" type="button" disabled={pending || !feedback.trim()} onClick={revise}>
           {pending ? "正在按意见重生成…" : "按意见重生成"}
         </button>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-[var(--line)] bg-white p-5">
+      <section className="panel space-y-3 p-5">
         <h2 className="text-sm font-medium">可选：导出 PPT</h2>
-        <p className="text-sm text-[#3d2a45]/70">指定页数后生成可编辑 PPTX。网页预览已经可以开会用。</p>
+        <p className="text-sm text-[var(--olive)]">指定页数后生成可编辑 PPTX。网页预览已经可以开会用。</p>
         <label className="block max-w-40 space-y-2 text-sm">
           <span className="font-medium">页数（4–12）</span>
           <input
@@ -106,7 +116,10 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
             min={4}
             max={12}
             value={pageCount}
-            onChange={(event) => setPageCount(Number(event.target.value) || 6)}
+            onChange={(event) => {
+              setPageCountTouched(true);
+              setPageCount(Number(event.target.value) || 6);
+            }}
           />
         </label>
         <button className="btn-secondary" type="button" disabled={exporting} onClick={exportPptx}>
@@ -123,7 +136,7 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
         ) : null}
       </section>
 
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--cta)]">{error}</p> : null}
     </div>
   );
 }

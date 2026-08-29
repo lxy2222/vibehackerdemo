@@ -87,21 +87,21 @@ export function OutlineForm({ project }: { project: ProjectDTO }) {
         submit();
       }}
     >
-      <p className="text-sm text-[#3d2a45]/70">
+      <p className="text-sm text-[var(--olive)]">
         可以改标题和结论，数字只能保留 {`{{fact_id}}`} 占位符。
       </p>
 
       {slides.map((slide, index) => (
         <section
           key={slide.id}
-          className="space-y-3 rounded-xl border border-[var(--line)] bg-white p-4"
+          className="space-y-3 rounded-2xl bg-[var(--lavender)]/40 p-4"
         >
           <div className="flex items-center justify-between gap-3 text-sm">
             <span className="font-medium text-[var(--primary)]">
               {index + 1}. {TYPE_LABEL[slide.type] ?? slide.type}
             </span>
             {slide.factRefs.length > 0 ? (
-              <span className="text-[#3d2a45]/55">{slide.factRefs.length} 条事实</span>
+              <span className="text-[var(--muted)]">{slide.factRefs.length} 条事实</span>
             ) : null}
           </div>
           <input
@@ -129,7 +129,7 @@ export function OutlineForm({ project }: { project: ProjectDTO }) {
             </p>
           ) : null}
           {slide.bullets.length > 0 ? (
-            <ul className="list-disc space-y-1 pl-5 text-sm text-[#3d2a45]/80">
+            <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--olive)]">
               {slide.bullets.map((bullet) => (
                 <li key={bullet}>{interpolate(bullet, facts)}</li>
               ))}

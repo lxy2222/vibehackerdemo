@@ -1,11 +1,10 @@
 import { z } from "zod";
 
-export const LEADER_FOCUSES = ["progress", "funnel", "tech", "decision"] as const;
+export const LEADER_FOCUSES = ["progress", "tech", "decision"] as const;
 export type LeaderFocus = (typeof LEADER_FOCUSES)[number];
 
 export const FOCUS_LABELS: Record<LeaderFocus, string> = {
   progress: "关注进度",
-  funnel: "关注漏斗",
   tech: "关注技术实现",
   decision: "关注拍板",
 };
@@ -39,13 +38,17 @@ export const briefSchema = z.object({
     .array(z.enum(LEADER_FOCUSES))
     .min(1)
     .transform((items) => [...new Set(items)]),
-  funnel: z.array(funnelStageSchema).min(2).max(8),
+  funnel: z.array(funnelStageSchema).max(8).default([]),
   progress: z.array(progressItemSchema).min(1).max(12),
 });
 
 export type FunnelStage = z.infer<typeof funnelStageSchema>;
 export type ProgressItem = z.infer<typeof progressItemSchema>;
 export type Brief = z.infer<typeof briefSchema>;
+
+export function hasFunnelStages(brief: { funnel: FunnelStage[] }) {
+  return brief.funnel.length >= 2;
+}
 
 export function defaultFunnelStages(): FunnelStage[] {
   return [

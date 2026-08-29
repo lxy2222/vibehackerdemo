@@ -1,16 +1,11 @@
 import type { Brief } from "@/lib/schemas/brief";
 
-export const DEMO_LEADER_REQUEST = `周五给管理层十分钟，别做成流水账。重点看业务漏斗卡在哪、几个关键事项现在推进到哪、有没有要拍的板。技术细节少讲，除非已经卡住进度。`;
+export const DEMO_LEADER_REQUEST = `周五给管理层十分钟，别做成流水账。重点看几个关键事项现在推进到哪、有没有要拍的板。技术细节少讲，除非已经卡住进度。`;
 
 export function getDemoBrief(): Brief {
   return {
-    focuses: ["progress", "funnel"],
-    funnel: [
-      { id: "funnel-1", name: "线索", value: 1200 },
-      { id: "funnel-2", name: "商机", value: 280 },
-      { id: "funnel-3", name: "方案", value: 64 },
-      { id: "funnel-4", name: "成交", value: 18 },
-    ],
+    focuses: ["progress", "decision"],
+    funnel: [],
     progress: [
       {
         id: "progress-1",

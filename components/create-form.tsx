@@ -7,13 +7,11 @@ import {
   LEADER_FOCUSES,
   STATUS_LABELS,
   PROGRESS_STATUSES,
-  defaultFunnelStages,
   defaultProgressItems,
   type LeaderFocus,
   type ProgressStatus,
 } from "@/lib/schemas/brief";
 
-type FunnelRow = { id: string; name: string; value: string };
 type ProgressRow = {
   id: string;
   name: string;
@@ -36,9 +34,6 @@ export function CreateForm() {
   const [leaderRequest, setLeaderRequest] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(10);
   const [focuses, setFocuses] = useState<LeaderFocus[]>(["progress"]);
-  const [funnel, setFunnel] = useState<FunnelRow[]>(() =>
-    defaultFunnelStages().map((stage) => ({ ...stage, value: "" })),
-  );
   const [progress, setProgress] = useState<ProgressRow[]>(() =>
     defaultProgressItems().map((item) => ({ ...item })),
   );
@@ -71,14 +66,12 @@ export function CreateForm() {
       durationMinutes: number;
       brief: {
         focuses: LeaderFocus[];
-        funnel: { id: string; name: string; value: number }[];
         progress: ProgressRow[];
       };
     };
     setLeaderRequest(data.leaderRequest);
     setDurationMinutes(data.durationMinutes);
     setFocuses(data.brief.focuses);
-    setFunnel(data.brief.funnel.map((stage) => ({ ...stage, value: String(stage.value) })));
     setProgress(data.brief.progress);
     setUseDemo(true);
   }
@@ -96,11 +89,7 @@ export function CreateForm() {
             useDemo,
             brief: {
               focuses,
-              funnel: funnel.map((stage) => ({
-                id: stage.id,
-                name: stage.name,
-                value: Number(stage.value),
-              })),
+              funnel: [],
               progress: progress.map((item) => ({
                 id: item.id,
                 name: item.name,
@@ -125,7 +114,7 @@ export function CreateForm() {
 
   return (
     <form
-      className="space-y-6"
+      className="panel space-y-6 p-6"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -140,7 +129,7 @@ export function CreateForm() {
             setLeaderRequest(event.target.value);
             setUseDemo(false);
           }}
-          placeholder="粘贴领导原话，例如周五给管理层十分钟，重点看漏斗和进度"
+          placeholder="粘贴领导原话，例如周五给管理层十分钟，重点看进度和要拍的板"
           required
         />
       </label>
@@ -166,71 +155,9 @@ export function CreateForm() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-sm font-medium">业务漏斗</h2>
-          <button
-            className="text-sm text-[var(--primary)]"
-            type="button"
-            onClick={() => {
-              setUseDemo(false);
-              setFunnel((rows) => [...rows, { id: newId(), name: "", value: "" }]);
-            }}
-          >
-            加阶段
-          </button>
-        </div>
-        <div className="space-y-2">
-          {funnel.map((stage, index) => (
-            <div key={stage.id} className="grid grid-cols-[1fr_7rem_auto] gap-2">
-              <input
-                className="field"
-                value={stage.name}
-                placeholder={`阶段 ${index + 1}`}
-                required
-                onChange={(event) => {
-                  setUseDemo(false);
-                  setFunnel((rows) =>
-                    rows.map((row) =>
-                      row.id === stage.id ? { ...row, name: event.target.value } : row,
-                    ),
-                  );
-                }}
-              />
-              <input
-                className="field"
-                inputMode="numeric"
-                value={stage.value}
-                placeholder="数量"
-                required
-                onChange={(event) => {
-                  setUseDemo(false);
-                  setFunnel((rows) =>
-                    rows.map((row) =>
-                      row.id === stage.id ? { ...row, value: event.target.value } : row,
-                    ),
-                  );
-                }}
-              />
-              <button
-                className="btn-secondary px-3"
-                type="button"
-                disabled={funnel.length <= 2}
-                onClick={() => {
-                  setUseDemo(false);
-                  setFunnel((rows) => rows.filter((row) => row.id !== stage.id));
-                }}
-              >
-                删
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
           <h2 className="text-sm font-medium">项目进度</h2>
           <button
-            className="text-sm text-[var(--primary)]"
+            className="text-sm font-medium text-[var(--olive)]"
             type="button"
             onClick={() => {
               setUseDemo(false);
@@ -245,7 +172,7 @@ export function CreateForm() {
         </div>
         <div className="space-y-3">
           {progress.map((item) => (
-            <div key={item.id} className="space-y-2 rounded-xl border border-[var(--line)] bg-white p-3">
+            <div key={item.id} className="space-y-2 rounded-2xl bg-[var(--lavender)]/45 p-3">
               <div className="grid gap-2 sm:grid-cols-[1fr_8rem_auto]">
                 <input
                   className="field"
@@ -339,10 +266,10 @@ export function CreateForm() {
       </label>
 
       {useDemo ? (
-        <p className="text-sm text-[var(--primary)]">已填入 demo 原话、漏斗和进度。</p>
+        <p className="text-sm text-[var(--olive)]">已填入 demo 原话和进度。</p>
       ) : null}
 
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="text-sm text-[var(--cta)]">{error}</p> : null}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <button className="btn-primary" type="submit" disabled={pending}>

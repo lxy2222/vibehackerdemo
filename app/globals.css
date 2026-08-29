@@ -1,25 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #fdfdfe;
-  --title: #452255;
-  --primary: #0b8571;
-  --accent: #ef8d37;
-  --muted: #8ecccd;
-  --line: #d7edea;
-  --body: #3d2a45;
+  --bg: #fcffff;
+  --title: #424f8f;
+  --primary: #424f8f;
+  --cta: #e3734d;
+  --accent: #e3734d;
+  --gold: #d8b415;
+  --olive: #896740;
+  --cream: #eccfa7;
+  --lavender: #e8e1eb;
+  --muted: #a0a4ac;
+  --line: #e8e1eb;
+  --body: #424f8f;
+}
+
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(ellipse 70% 45% at -10% -5%, #e8e1eb 0%, transparent 58%),
+    radial-gradient(ellipse 55% 40% at 110% 0%, #eccfa7 0%, transparent 52%),
+    radial-gradient(ellipse 45% 35% at 95% 105%, color-mix(in srgb, #d8b415 28%, transparent) 0%, transparent 55%);
+  color: var(--title);
 }
 
 .btn-primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
-  background: var(--primary);
-  color: white;
-  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  background: var(--cta);
+  color: #fcffff;
+  padding: 0.8rem 1.2rem;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .btn-primary:disabled {
@@ -30,38 +44,50 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 0.5rem;
+  border-radius: 999px;
   border: 1px solid var(--line);
   color: var(--title);
-  padding: 0.75rem 1rem;
+  padding: 0.8rem 1.2rem;
   font-size: 0.875rem;
-  font-weight: 500;
-  background: white;
+  font-weight: 600;
+  background: color-mix(in srgb, var(--lavender) 55%, white);
 }
 
 .field {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 0.5rem;
-  padding: 0.75rem 0.85rem;
+  border-radius: 0.85rem;
+  padding: 0.75rem 0.9rem;
   font-size: 0.95rem;
   color: var(--title);
-  background: white;
+  background: color-mix(in srgb, var(--bg) 82%, white);
+}
+
+.field:focus {
+  outline: 2px solid color-mix(in srgb, var(--gold) 70%, white);
+  outline-offset: 1px;
 }
 
 .chip {
   border-radius: 999px;
-  border: 1px solid var(--line);
-  padding: 0.4rem 0.85rem;
+  border: 1px solid transparent;
+  padding: 0.4rem 0.9rem;
   font-size: 0.875rem;
-  background: white;
+  background: var(--lavender);
   color: var(--title);
 }
 
 .chip-on {
-  background: #e7f6f3;
-  border-color: var(--primary);
-  color: var(--primary);
+  background: var(--cream);
+  border-color: color-mix(in srgb, var(--olive) 35%, var(--cream));
+  color: var(--olive);
+}
+
+.panel {
+  border-radius: 1.4rem;
+  background: color-mix(in srgb, #fcffff 78%, white);
+  border: 1px solid color-mix(in srgb, var(--lavender) 80%, white);
+  box-shadow: 0 18px 40px rgb(66 79 143 / 0.08);
 }
 
 .slide-frame {
@@ -69,9 +95,9 @@
   overflow: hidden;
   aspect-ratio: 16 / 9;
   border: 1px solid var(--line);
-  border-radius: 0.9rem;
-  background: #fdfdfe;
-  box-shadow: 0 10px 30px rgb(69 34 85 / 0.06);
+  border-radius: 1.1rem;
+  background: #fcffff;
+  box-shadow: 0 16px 36px rgb(66 79 143 / 0.08);
 }
 
 .slide-accent {
@@ -79,11 +105,14 @@
   left: 0;
   top: 0;
   height: 100%;
-  width: 0.28rem;
-  background: var(--primary);
+  width: 0.32rem;
+  background: var(--cta);
 }
 
-body {
-  background: var(--bg);
-  color: var(--title);
+.kicker {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--olive);
 }

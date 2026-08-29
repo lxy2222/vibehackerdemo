@@ -18,10 +18,10 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const STATUS_TONE: Record<string, string> = {
-  进行中: "bg-[#e7f6f3] text-[var(--primary)]",
-  有风险: "bg-[#fff1e4] text-[#c05612]",
-  已阻塞: "bg-[#fde8e8] text-[#b42318]",
-  已完成: "bg-[#eef2f3] text-[#5b6570]",
+  进行中: "bg-[var(--lavender)] text-[var(--title)]",
+  有风险: "bg-[var(--cream)] text-[var(--olive)]",
+  已阻塞: "bg-[color-mix(in_srgb,var(--cta)_22%,white)] text-[var(--cta)]",
+  已完成: "bg-[#f3f3f5] text-[var(--muted)]",
 };
 
 function CoverSlide({ slide, subtitle }: { slide: SlideSpec; subtitle: string }) {
@@ -30,9 +30,9 @@ function CoverSlide({ slide, subtitle }: { slide: SlideSpec; subtitle: string })
       <p className="text-sm font-medium tracking-wide text-[var(--primary)]">工作汇报</p>
       <h2 className="mt-3 text-4xl font-semibold tracking-tight">{slide.headline}</h2>
       <p className="mt-4 text-xl text-[var(--accent)]">{slide.takeaway}</p>
-      <p className="mt-3 text-base text-[#3d2a45]/75">{subtitle}</p>
+      <p className="mt-3 text-base text-[var(--olive)]">{subtitle}</p>
       {slide.bullets.length > 0 ? (
-        <p className="mt-auto text-sm text-[#3d2a45]/55">{slide.bullets.join("  ·  ")}</p>
+        <p className="mt-auto text-sm text-[var(--muted)]">{slide.bullets.join("  ·  ")}</p>
       ) : null}
     </div>
   );
@@ -51,7 +51,7 @@ function FunnelSlide({
   return (
     <ContentFrame slide={slide} facts={facts}>
       {stages.length === 0 ? (
-        <p className="py-16 text-center text-[#3d2a45]/50">还没有漏斗数字</p>
+        <p className="py-16 text-center text-[var(--muted)]">还没有漏斗数字</p>
       ) : (
         <div className="flex h-full flex-col justify-center gap-3 px-2">
           {stages.map((fact, index) => {
@@ -71,7 +71,7 @@ function FunnelSlide({
             );
           })}
           {slide.bullets.length > 0 ? (
-            <ul className="mt-2 space-y-1 text-[13px] text-[#3d2a45]/80">
+            <ul className="mt-2 space-y-1 text-[13px] text-[var(--olive)]">
               {slide.bullets.map((bullet) => (
                 <li key={bullet}>{interpolate(bullet, facts)}</li>
               ))}
@@ -100,7 +100,7 @@ function ProgressSlide({
   return (
     <ContentFrame slide={slide} facts={facts}>
       {rows.length === 0 ? (
-        <p className="py-16 text-center text-[#3d2a45]/50">还没有进度事项</p>
+        <p className="py-16 text-center text-[var(--muted)]">还没有进度事项</p>
       ) : (
         <table className="w-full text-left text-[13px]">
           <thead>
@@ -121,7 +121,7 @@ function ProgressSlide({
                   </span>
                 </td>
                 <td className="py-2 pr-3">{row.owner}</td>
-                <td className="py-2 text-[#3d2a45]/75">{row.note}</td>
+                <td className="py-2 text-[var(--olive)]">{row.note}</td>
               </tr>
             ))}
           </tbody>
@@ -140,7 +140,7 @@ function BulletSlide({
 }) {
   return (
     <ContentFrame slide={slide} facts={facts}>
-      <ul className="space-y-3 text-[15px] leading-6 text-[#3d2a45]/90">
+      <ul className="space-y-3 text-[15px] leading-6 text-[var(--title)]">
         {slide.bullets.map((bullet) => (
           <li key={bullet} className="flex gap-2">
             <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />
@@ -203,7 +203,7 @@ function ContentFrame({
     <div className="flex h-full flex-col px-8 py-6">
       <h2 className="text-xl font-semibold">{interpolate(slide.headline, facts)}</h2>
       {slide.takeaway ? (
-        <p className="mt-3 rounded-lg bg-[#f3fbfa] px-3 py-2 text-sm font-medium text-[var(--primary)]">
+        <p className="mt-3 rounded-lg bg-[var(--lavender)] px-3 py-2 text-sm font-medium text-[var(--title)]">
           {interpolate(slide.takeaway, facts)}
         </p>
       ) : null}
@@ -241,7 +241,7 @@ export function SlidePreview({
 
   return (
     <article className="space-y-2">
-      <p className="text-xs text-[#3d2a45]/55">
+      <p className="text-xs text-[var(--muted)]">
         {index + 1}/{total} · {TYPE_LABEL[slide.type] ?? slide.type}
       </p>
       <div className="slide-frame">

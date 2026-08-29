@@ -62,7 +62,7 @@ export function getProjectDTO(id: string): ProjectDTO | null {
 function requireBrief(project: ProjectRecord): Brief {
   const parsed = briefSchema.safeParse(parseJson(project.brief, null));
   if (!parsed.success) {
-    throw new Error("缺少漏斗或进度信息，请重新创建");
+    throw new Error("缺少进度信息，请重新创建");
   }
   return parsed.data;
 }

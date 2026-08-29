@@ -1,4 +1,5 @@
 import { PreviewStudio } from "@/components/preview-studio";
+import { AppShell } from "@/components/app-shell";
 import { WizardNav } from "@/components/wizard-nav";
 import { getProjectDTO } from "@/lib/projects/service";
 import { notFound, redirect } from "next/navigation";
@@ -20,15 +21,16 @@ export default async function PreviewPage({
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-8 px-6 py-12">
+    <AppShell wide>
       <div className="space-y-3">
-        <h1 className="text-2xl font-semibold">{project.deck?.title ?? "汇报模版"}</h1>
-        <p className="text-sm leading-6 text-[#3d2a45]/75">
+        <p className="kicker">预览</p>
+        <h1 className="text-3xl font-semibold tracking-tight">{project.deck?.title ?? "汇报模版"}</h1>
+        <p className="text-sm leading-6 text-[var(--olive)]">
           {project.deck?.subtitle ?? "先预览网页幻灯片，需要时再导出 PPT。"}
         </p>
       </div>
       <WizardNav current={project.deckId ? "export" : "preview"} />
       <PreviewStudio project={project} />
-    </main>
+    </AppShell>
   );
 }

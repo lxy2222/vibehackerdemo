@@ -1,13 +1,14 @@
 import { isFunnelStageFact } from "@/lib/facts/from-brief";
 import type { Fact } from "@/lib/presentation/types";
 import {
+  TEMPLATE_SLIDE_TYPES,
   type DeckSpec,
   type SlideSpec,
   type SlideType,
   type TemplateSlideType,
 } from "@/lib/schemas/deck";
 import type { Brief } from "@/lib/schemas/brief";
-import { FOCUS_LABELS, STATUS_LABELS } from "@/lib/schemas/brief";
+import { FOCUS_LABELS, STATUS_LABELS, hasFunnelStages } from "@/lib/schemas/brief";
 
 export type NormalizeContext = {
   leaderRequest: string;
@@ -111,14 +112,14 @@ function defaultSlide(type: TemplateSlideType, index: number, facts: Fact[], ctx
     bullets,
     factRefs,
     chart: type === "funnel" && funnelRefs.length > 0 ? { type: "bar", factRefs: funnelRefs } : undefined,
-    speakerNotes: type === "cover" ? "" : "按填写的漏斗和进度讲，不补充未提供的数字。",
+    speakerNotes: type === "cover" ? "" : "按已填写的进度和材料讲，不补充未提供的数字。",
     estimatedSeconds: type === "cover" ? 20 : 50,
   };
 }
 
 function neededTypes(brief: Brief): TemplateSlideType[] {
   const types: TemplateSlideType[] = ["cover", "executive_summary"];
-  if (brief.focuses.includes("funnel") || brief.funnel.length > 0) {
+  if (hasFunnelStages(brief)) {
     types.push("funnel");
   }
   if (brief.focuses.includes("progress") || brief.progress.length > 0) {
@@ -128,6 +129,38 @@ function neededTypes(brief: Brief): TemplateSlideType[] {
     types.push("tech_focus");
   }
   return types;
+}
+
+function withFallbackTakeaway(slide: SlideSpec): SlideSpec {
+  if (slide.takeaway || slide.bullets.length > 0) {
+    return slide;
+  }
+  return { ...slide, takeaway: DEFAULT_HEADLINES[slide.type] };
+}
+
+function padToCount(slides: SlideSpec[], target: number, facts: Fact[], ctx: NormalizeContext): SlideSpec[] {
+  const result = [...slides];
+  const have = new Set(result.map((slide) => slide.type));
+  const fillTypes = TEMPLATE_SLIDE_TYPES.filter((type) => type !== "cover");
+
+  for (const type of [...neededTypes(ctx.brief), ...fillTypes]) {
+    if (result.length >= target) {
+      break;
+    }
+    if (!have.has(type)) {
+      result.push(withFallbackTakeaway(defaultSlide(type, result.length, facts, ctx)));
+      have.add(type);
+    }
+  }
+
+  let extra = 0;
+  while (result.length < target) {
+    const type = fillTypes[extra % fillTypes.length];
+    extra += 1;
+    result.push(withFallbackTakeaway(defaultSlide(type, result.length, facts, ctx)));
+  }
+
+  return result;
 }
 
 function cleanSlide(source: SlideSpec, index: number, factIds: Set<string>): SlideSpec {
@@ -169,8 +202,11 @@ export function normalizeDeckSpec(raw: DeckSpec, facts: Fact[], ctx: NormalizeCo
 
   let slides = raw.slides.map((slide, index) => cleanSlide(slide, index, factIds));
   slides = slides.filter((slide) => {
-    if (slide.type === "cover" || slide.type === "funnel" || slide.type === "progress") {
+    if (slide.type === "cover" || slide.type === "progress") {
       return true;
+    }
+    if (slide.type === "funnel") {
+      return hasFunnelStages(ctx.brief) && slide.factRefs.length > 0;
     }
     return Boolean(slide.takeaway || slide.bullets.length > 0);
   });
@@ -181,7 +217,9 @@ export function normalizeDeckSpec(raw: DeckSpec, facts: Fact[], ctx: NormalizeCo
     slides.unshift(defaultSlide("cover", 0, facts, ctx));
   }
 
-  if (!ctx.exactSlides) {
+  if (ctx.exactSlides && slides.length < ctx.exactSlides) {
+    slides = padToCount(slides, ctx.exactSlides, facts, ctx);
+  } else if (!ctx.exactSlides) {
     const have = new Set(slides.map((slide) => slide.type));
     neededTypes(ctx.brief).forEach((type) => {
       if (!have.has(type) && slides.length < maxSlides) {

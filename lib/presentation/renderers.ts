@@ -56,8 +56,8 @@ function addHeadline(slide: Slide, spec: SlideSpec, facts: Map<string, Fact>) {
     y: 0,
     w: 0.12,
     h: 7.5,
-    fill: { color: theme.primary },
-    line: { color: theme.primary },
+    fill: { color: theme.accent },
+    line: { color: theme.accent },
   });
   slide.addText(interpolate(spec.headline, facts), {
     ...textOpts({ fontSize: 22, bold: true }),
@@ -74,9 +74,9 @@ function addTakeaway(slide: Slide, spec: SlideSpec, facts: Map<string, Fact>) {
     y: 0.82,
     w: 12.3,
     h: 0.72,
-    fill: { color: "F3FBFA" },
+    fill: { color: theme.lavender },
     rectRadius: 0.08,
-    line: { color: "D7EDEA" },
+    line: { color: theme.cream },
   });
   slide.addText(interpolate(spec.takeaway, facts), {
     ...textOpts({ fontSize: 14, color: theme.primary, bold: true }),
@@ -105,7 +105,7 @@ function addMissingPlaceholder(slide: Slide) {
     w: 12.3,
     h: 0.6,
   });
-  slide.addText("填写漏斗或进度后，本页会显示对应内容。", {
+  slide.addText("填写进度后，本页会显示对应内容。", {
     ...textOpts({ fontSize: 13, color: theme.body, align: "center" }),
     x: 0.5,
     y: 4.05,
@@ -128,7 +128,7 @@ function renderCover(pres: Pres, spec: SlideSpec, deck: DeckSpec) {
     y: 0,
     w: 0.28,
     h: 7.5,
-    fill: { color: theme.primary },
+    fill: { color: theme.accent },
   });
   slide.addText("工作汇报", {
     ...textOpts({ fontSize: 14, color: theme.primary, bold: true }),

@@ -21,10 +21,10 @@ export function WizardNav({
             key={step.key}
             className={
               active
-                ? "rounded-full bg-[var(--primary)] px-3 py-1 text-white"
+                ? "rounded-full bg-[var(--title)] px-3 py-1 font-medium text-[#fcffff]"
                 : done
-                  ? "rounded-full bg-[#e7f6f3] px-3 py-1 text-[var(--primary)]"
-                  : "rounded-full bg-white px-3 py-1 text-[#3d2a45]/50"
+                  ? "rounded-full bg-[var(--cream)] px-3 py-1 text-[var(--olive)]"
+                  : "rounded-full bg-[var(--lavender)] px-3 py-1 text-[var(--muted)]"
             }
           >
             {index + 1}. {step.label}

@@ -17,8 +17,8 @@ const EXAMPLE = {
       id: "s1",
       type: "cover",
       headline: "Q2 业务进展",
-      takeaway: "漏斗能交卷，关键事项还没打赢",
-      bullets: ["关注：关注进度、关注漏斗", "时长：10 分钟"],
+      takeaway: "能交卷，关键事项还没打赢",
+      bullets: ["关注：关注进度、关注拍板", "时长：10 分钟"],
       factRefs: [],
       speakerNotes: "",
       estimatedSeconds: 20,
@@ -27,10 +27,10 @@ const EXAMPLE = {
       id: "s2",
       type: "executive_summary",
       headline: "核心结论",
-      takeaway: "总转化 {{fact_funnel_overall_conv}}，阻塞 {{fact_progress_blocked}} 项",
-      bullets: ["漏斗主要卡在商机到方案", "值班方案未定，会影响周末转化"],
-      factRefs: ["fact_funnel_overall_conv", "fact_progress_blocked"],
-      speakerNotes: "先给结论，再展开漏斗和进度。",
+      takeaway: "阻塞 {{fact_progress_blocked}} 项，需要当场拍板",
+      bullets: ["值班方案未定，会影响周末转化", "预算挪移还等管理层拍板"],
+      factRefs: ["fact_progress_blocked"],
+      speakerNotes: "先给结论，再展开进度和待拍板事项。",
       estimatedSeconds: 70,
     },
   ],
@@ -67,7 +67,8 @@ function systemPrompt(extra: string) {
 - 标题不超过 24 个汉字，每页最多 5 条 bullet。
 - 所有数字必须写成 {{fact_id}} 占位符，禁止裸数字（如 35%、1200）。封面时长可以用「10 分钟」这种用户给定时长。
 - 只能引用提供的 fact id，不要编造表单里没有的事项和数字。
-- funnel 页 factRefs 使用 fact_funnel_1 这类阶段事实；progress 页 bullets 格式：事项｜状态｜负责人｜说明。
+- funnel 页仅在用户提供了漏斗阶段数字时使用，factRefs 用 fact_funnel_1 这类阶段事实；没有漏斗数据就不要生成 funnel 页。
+- progress 页 bullets 格式：事项｜状态｜负责人｜说明。
 - 行动计划 bullets 格式：行动｜负责人｜截止。
 - speakerNotes 是 40–80 秒中文讲稿。
 ${extra}
@@ -89,8 +90,8 @@ export async function generateDeckSpec(input: {
       messages: [
         {
           role: "system",
-          content: systemPrompt(`- 页数 4–8。通常顺序：封面 → 核心结论 → 关注点对应的漏斗/进度/技术页 → 问题 → 建议或行动。
-- 关注点是：${focusText}。含「关注漏斗」必须有 funnel 页；含「关注进度」必须有 progress 页；含「关注技术实现」必须有 tech_focus 页；含「关注拍板」行动计划靠前、写清待决策。`),
+          content: systemPrompt(`- 页数 4–8。通常顺序：封面 → 核心结论 → 关注点对应的进度/技术页 → 问题 → 建议或行动。
+- 关注点是：${focusText}。含「关注进度」必须有 progress 页；含「关注技术实现」必须有 tech_focus 页；含「关注拍板」行动计划靠前、写清待决策。不要默认生成业务漏斗页。`),
         },
         {
           role: "user",
@@ -127,7 +128,7 @@ export async function reviseDeckSpec(input: {
           role: "system",
           content: systemPrompt(`- 根据用户意见修改现有 DeckSpec，页数仍 4–8。
 - 不要改 Fact 里的数字，不要发明新事项。
-- 「漏斗太细了」应合并漏斗叙述；「进度写轻了」应加重 progress 页。`),
+- 「进度写轻了」应加重 progress 页；没有漏斗数据时不要补漏斗页。`),
         },
         {
           role: "user",
