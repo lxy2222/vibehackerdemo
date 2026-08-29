@@ -9,7 +9,7 @@ const TYPE_LABEL: Record<string, string> = {
   funnel: "业务漏斗",
   progress: "当前进度",
   tech_focus: "技术实现",
-  diagnosis: "问题与卡点",
+  diagnosis: "风险点",
   recommendations: "建议",
   action_plan: "行动计划",
   kpi_overview: "指标总览",

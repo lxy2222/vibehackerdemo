@@ -1,11 +1,15 @@
 import fs from "node:fs/promises";
-import { factsFromBrief } from "@/lib/facts/from-brief";
-import { generateDeckSpec, resizeDeckSpec, reviseDeckSpec } from "@/lib/llm/deck";
+import { analyzeNarrative } from "@/lib/llm/analyze-narrative";
 import { generatePptxBuffer } from "@/lib/presentation/generate-pptx";
+import { deckFromAnalysis } from "@/lib/presentation/from-analysis";
 import type { Fact } from "@/lib/presentation/types";
 import { briefSchema, type Brief } from "@/lib/schemas/brief";
+import {
+  reportAnalysisSchema,
+  type ReportAnalysis,
+} from "@/lib/schemas/analysis";
 import type { DeckSpec } from "@/lib/schemas/deck";
-import { getDemoBrief, DEMO_LEADER_REQUEST } from "@/lib/demo/brief";
+import { DEMO_MATERIALS, DEMO_REPORT_BACKGROUND } from "@/lib/demo/narrative";
 import { saveArtifact } from "@/lib/storage/files";
 import {
   createProjectRow,
@@ -37,13 +41,20 @@ function asStatus(raw: string): ProjectStatus {
   return "draft";
 }
 
+function parseAnalysis(raw: string | null): ReportAnalysis | null {
+  const parsed = reportAnalysisSchema.safeParse(parseJson(raw, null));
+  return parsed.success ? parsed.data : null;
+}
+
 export function toDTO(project: ProjectRecord): ProjectDTO {
   return {
     id: project.id,
     status: asStatus(project.status),
     leaderRequest: project.leaderRequest,
     durationMinutes: project.durationMinutes,
+    materials: project.notesChunks ?? "",
     brief: parseJson<Brief | null>(project.brief, null),
+    analysis: parseAnalysis(project.analysis),
     facts: parseJson<Fact[]>(project.facts, []),
     deck: parseJson<DeckSpec | null>(project.deckSpec, null),
     deckId: project.deckId,
@@ -59,63 +70,132 @@ export function getProjectDTO(id: string): ProjectDTO | null {
   return toDTO(project);
 }
 
-function requireBrief(project: ProjectRecord): Brief {
-  const parsed = briefSchema.safeParse(parseJson(project.brief, null));
-  if (!parsed.success) {
-    throw new Error("缺少进度信息，请重新创建");
+function requireAnalysis(project: ProjectRecord): ReportAnalysis {
+  const analysis = parseAnalysis(project.analysis);
+  if (!analysis) {
+    throw new Error("还没有分析主线，请先确认汇报背景");
   }
-  return parsed.data;
+  return analysis;
 }
 
-export async function createAndGenerateTemplate(input: {
+async function runAnalysis(project: ProjectRecord, current?: ReportAnalysis) {
+  const analysis = await analyzeNarrative({
+    reportBackground: project.leaderRequest,
+    materials: project.notesChunks ?? "",
+    durationMinutes: project.durationMinutes,
+    current,
+  });
+  const deck = deckFromAnalysis({
+    reportBackground: project.leaderRequest,
+    durationMinutes: project.durationMinutes,
+    analysis,
+  });
+  updateProjectRow(project.id, {
+    status: "ready",
+    analysis: JSON.stringify(analysis),
+    deckSpec: JSON.stringify(deck),
+    facts: JSON.stringify([]),
+    errorMessage: null,
+  });
+  return getProjectDTO(project.id)!;
+}
+
+export async function createAndAnalyze(input: {
+  reportBackground?: string;
   leaderRequest?: string;
+  materials?: string;
   durationMinutes?: number;
-  brief?: unknown;
   useDemo?: boolean;
 }): Promise<ProjectDTO> {
   const durationMinutes = input.durationMinutes && input.durationMinutes > 0 ? input.durationMinutes : 10;
-  const brief = input.useDemo ? getDemoBrief() : briefSchema.parse(input.brief);
-  const leaderRequest = input.useDemo
-    ? DEMO_LEADER_REQUEST
-    : (input.leaderRequest ?? "").trim();
-  if (!leaderRequest) {
-    throw new Error("请填写汇报原话");
+  const reportBackground = input.useDemo
+    ? DEMO_REPORT_BACKGROUND
+    : (input.reportBackground ?? input.leaderRequest ?? "").trim();
+  const materials = input.useDemo ? DEMO_MATERIALS : (input.materials ?? "").trim();
+  if (!reportBackground) {
+    throw new Error("请填写最初的汇报背景");
   }
 
-  const facts = factsFromBrief(brief);
   const project = createProjectRow({
-    leaderRequest,
+    leaderRequest: reportBackground,
     durationMinutes,
-    brief: JSON.stringify(brief),
+    notesChunks: materials,
   });
 
-  updateProjectRow(project.id, {
+  updateProjectRow(project.id, { status: "generating", errorMessage: null });
+
+  try {
+    return await runAnalysis(getProjectRow(project.id)!);
+  } catch (error) {
+    updateProjectRow(project.id, {
+      status: "failed",
+      errorMessage: error instanceof Error ? error.message : "分析失败",
+    });
+    throw error;
+  }
+}
+
+export async function reanalyzeProject(
+  projectId: string,
+  input: {
+    materials?: string;
+    analysis?: unknown;
+  },
+): Promise<ProjectDTO> {
+  const project = getProjectRow(projectId);
+  if (!project) {
+    throw new Error("项目不存在");
+  }
+
+  const materials = (input.materials ?? project.notesChunks ?? "").trim();
+  const current = input.analysis
+    ? reportAnalysisSchema.parse(input.analysis)
+    : parseAnalysis(project.analysis) ?? undefined;
+
+  updateProjectRow(projectId, {
     status: "generating",
-    facts: JSON.stringify(facts),
+    notesChunks: materials,
+    analysis: current ? JSON.stringify(current) : project.analysis,
     errorMessage: null,
   });
 
   try {
-    const deck = await generateDeckSpec({
-      leaderRequest,
-      durationMinutes,
-      brief,
-      facts,
-    });
-    updateProjectRow(project.id, {
-      status: "ready",
-      facts: JSON.stringify(facts),
-      deckSpec: JSON.stringify(deck),
-      errorMessage: null,
-    });
-    return getProjectDTO(project.id)!;
+    return await runAnalysis(getProjectRow(projectId)!, current);
   } catch (error) {
-    updateProjectRow(project.id, {
+    updateProjectRow(projectId, {
       status: "failed",
-      errorMessage: error instanceof Error ? error.message : "生成模版失败",
+      errorMessage: error instanceof Error ? error.message : "重新分析失败",
     });
     throw error;
   }
+}
+
+export async function saveAnalysis(
+  projectId: string,
+  input: { materials?: string; analysis: unknown },
+): Promise<ProjectDTO> {
+  const project = getProjectRow(projectId);
+  if (!project) {
+    throw new Error("项目不存在");
+  }
+
+  const analysis = reportAnalysisSchema.parse(input.analysis);
+  const materials = (input.materials ?? project.notesChunks ?? "").trim();
+  const deck = deckFromAnalysis({
+    reportBackground: project.leaderRequest,
+    durationMinutes: project.durationMinutes,
+    analysis,
+  });
+
+  updateProjectRow(projectId, {
+    status: "ready",
+    notesChunks: materials,
+    analysis: JSON.stringify(analysis),
+    deckSpec: JSON.stringify(deck),
+    facts: JSON.stringify([]),
+    errorMessage: null,
+  });
+  return getProjectDTO(projectId)!;
 }
 
 export async function reviseProject(projectId: string, feedback: string): Promise<ProjectDTO> {
@@ -128,30 +208,14 @@ export async function reviseProject(projectId: string, feedback: string): Promis
     throw new Error("请填写修改意见");
   }
 
-  const brief = requireBrief(project);
-  const facts = parseJson<Fact[]>(project.facts, factsFromBrief(brief));
-  const current = parseJson<DeckSpec | null>(project.deckSpec, null);
-  if (!current) {
-    throw new Error("还没有模版");
-  }
-
+  const current = requireAnalysis(project);
   updateProjectRow(projectId, { status: "generating", errorMessage: null });
 
   try {
-    const deck = await reviseDeckSpec({
-      leaderRequest: project.leaderRequest,
-      durationMinutes: project.durationMinutes,
-      brief,
-      facts,
-      current,
-      feedback: trimmed,
+    return await runAnalysis(getProjectRow(projectId)!, {
+      ...current,
+      excludedDetails: [...current.excludedDetails, `用户意见：${trimmed}`],
     });
-    updateProjectRow(projectId, {
-      status: "ready",
-      deckSpec: JSON.stringify(deck),
-      errorMessage: null,
-    });
-    return getProjectDTO(projectId)!;
   } catch (error) {
     updateProjectRow(projectId, {
       status: "ready",
@@ -161,16 +225,21 @@ export async function reviseProject(projectId: string, feedback: string): Promis
   }
 }
 
-export async function exportProjectPptx(projectId: string, pageCount: number): Promise<ProjectDTO> {
+export async function exportProjectPptx(projectId: string, _pageCount: number): Promise<ProjectDTO> {
   const project = getProjectRow(projectId);
   if (!project) {
     throw new Error("项目不存在");
   }
 
-  const count = Math.min(12, Math.max(4, Math.round(pageCount)));
-  const brief = requireBrief(project);
-  const facts = parseJson<Fact[]>(project.facts, factsFromBrief(brief));
+  const analysis = parseAnalysis(project.analysis);
   let deck = parseJson<DeckSpec | null>(project.deckSpec, null);
+  if (!deck && analysis) {
+    deck = deckFromAnalysis({
+      reportBackground: project.leaderRequest,
+      durationMinutes: project.durationMinutes,
+      analysis,
+    });
+  }
   if (!deck) {
     throw new Error("还没有模版");
   }
@@ -178,17 +247,7 @@ export async function exportProjectPptx(projectId: string, pageCount: number): P
   updateProjectRow(projectId, { status: "generating", errorMessage: null });
 
   try {
-    if (deck.slides.length !== count) {
-      deck = await resizeDeckSpec({
-        leaderRequest: project.leaderRequest,
-        durationMinutes: project.durationMinutes,
-        brief,
-        facts,
-        current: deck,
-        pageCount: count,
-      });
-    }
-
+    const facts = parseJson<Fact[]>(project.facts, []);
     const buffer = await generatePptxBuffer(deck, facts);
     const deckId = crypto.randomUUID();
     const pptxPath = await saveArtifact(deckId, buffer);
@@ -230,4 +289,24 @@ export async function readDeckPptx(deckId: string): Promise<{ filename: string; 
     const bytes = await generatePptxBuffer(spec, facts);
     return { filename: `${spec.title || "汇报"}.pptx`, bytes };
   }
+}
+
+export function createAndGenerateTemplate(input: {
+  leaderRequest?: string;
+  durationMinutes?: number;
+  brief?: unknown;
+  useDemo?: boolean;
+}): Promise<ProjectDTO> {
+  const brief = input.brief ? briefSchema.safeParse(input.brief) : null;
+  const materials = brief?.success
+    ? brief.data.progress
+        .map((item) => `${item.name}｜${item.status}｜${item.owner}｜${item.note}`)
+        .join("\n")
+    : "";
+  return createAndAnalyze({
+    reportBackground: input.leaderRequest,
+    materials,
+    durationMinutes: input.durationMinutes,
+    useDemo: input.useDemo,
+  });
 }

@@ -1,6 +1,7 @@
 import type { Brief } from "@/lib/schemas/brief";
 import type { Fact } from "@/lib/presentation/types";
 import type { DeckSpec } from "@/lib/schemas/deck";
+import type { ReportAnalysis } from "@/lib/schemas/analysis";
 
 export type ProjectStatus = "draft" | "generating" | "ready" | "failed";
 
@@ -25,6 +26,7 @@ export type ProjectRecord = {
   columnMapping: string | null;
   facts: string | null;
   notesChunks: string | null;
+  analysis: string | null;
   deckSpec: string | null;
   deckId: string | null;
   errorMessage: string | null;
@@ -37,7 +39,9 @@ export type ProjectDTO = {
   status: ProjectStatus;
   leaderRequest: string;
   durationMinutes: number;
+  materials: string;
   brief: Brief | null;
+  analysis: ReportAnalysis | null;
   facts: Fact[];
   deck: DeckSpec | null;
   deckId: string | null;

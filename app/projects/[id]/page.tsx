@@ -13,5 +13,8 @@ export default async function ProjectIndexPage({
   if (!project) {
     notFound();
   }
-  redirect(`/projects/${id}/preview`);
+  if (project.deck) {
+    redirect(`/projects/${id}/preview`);
+  }
+  redirect(`/projects/${id}/outline`);
 }

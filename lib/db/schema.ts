@@ -11,6 +11,7 @@ export const projects = sqliteTable("projects", {
   columnMapping: text("column_mapping"),
   facts: text("facts"),
   notesChunks: text("notes_chunks"),
+  analysis: text("analysis"),
   deckSpec: text("deck_spec"),
   deckId: text("deck_id"),
   errorMessage: text("error_message"),

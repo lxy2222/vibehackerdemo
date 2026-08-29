@@ -8,5 +8,5 @@ export default async function ClarifyRedirect({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  redirect(`/projects/${id}/preview`);
+  redirect(`/projects/${id}/outline`);
 }

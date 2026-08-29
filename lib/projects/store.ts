@@ -10,7 +10,8 @@ function now() {
 export function createProjectRow(input: {
   leaderRequest: string;
   durationMinutes: number;
-  brief: string;
+  brief?: string | null;
+  notesChunks?: string | null;
 }): ProjectRecord {
   const id = crypto.randomUUID();
   const createdAt = now();
@@ -21,7 +22,8 @@ export function createProjectRow(input: {
       status: "draft",
       leaderRequest: input.leaderRequest,
       durationMinutes: input.durationMinutes,
-      brief: input.brief,
+      brief: input.brief ?? null,
+      notesChunks: input.notesChunks ?? null,
       createdAt,
       updatedAt: createdAt,
     })

@@ -1,4 +1,4 @@
-import { createAndGenerateTemplate } from "@/lib/projects/service";
+import { createAndAnalyze } from "@/lib/projects/service";
 import { errorMessage, jsonError, jsonOk } from "@/lib/http/respond";
 
 export const runtime = "nodejs";
@@ -7,19 +7,20 @@ export const maxDuration = 60;
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as {
+      reportBackground?: string;
       leaderRequest?: string;
+      materials?: string;
       durationMinutes?: number;
-      brief?: unknown;
       useDemo?: boolean;
     };
-    const project = await createAndGenerateTemplate({
-      leaderRequest: body.leaderRequest,
+    const project = await createAndAnalyze({
+      reportBackground: body.reportBackground ?? body.leaderRequest,
+      materials: body.materials,
       durationMinutes: body.durationMinutes,
-      brief: body.brief,
       useDemo: body.useDemo,
     });
     return jsonOk(project, 201);
   } catch (error) {
-    return jsonError(errorMessage(error, "创建失败"));
+    return jsonError(errorMessage(error, "分析失败"));
   }
 }

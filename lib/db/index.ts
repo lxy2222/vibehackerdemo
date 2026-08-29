@@ -22,6 +22,7 @@ function migrate(connection: Database.Database) {
       column_mapping TEXT,
       facts TEXT,
       notes_chunks TEXT,
+      analysis TEXT,
       deck_spec TEXT,
       deck_id TEXT,
       error_message TEXT,
@@ -52,6 +53,9 @@ function migrate(connection: Database.Database) {
   const columns = connection.pragma("table_info(projects)") as { name: string }[];
   if (!columns.some((column) => column.name === "brief")) {
     connection.exec("ALTER TABLE projects ADD COLUMN brief TEXT");
+  }
+  if (!columns.some((column) => column.name === "analysis")) {
+    connection.exec("ALTER TABLE projects ADD COLUMN analysis TEXT");
   }
 }
 

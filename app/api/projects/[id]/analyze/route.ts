@@ -1,7 +1,22 @@
-import { jsonError } from "@/lib/http/respond";
+import { reanalyzeProject } from "@/lib/projects/service";
+import { errorMessage, jsonError, jsonOk } from "@/lib/http/respond";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
-export async function POST() {
-  return jsonError("此步骤已下线，请从首页重新创建汇报模版", 410);
+export async function POST(
+  request: Request,
+  context: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await context.params;
+    const body = (await request.json().catch(() => ({}))) as {
+      materials?: string;
+      analysis?: unknown;
+    };
+    const project = await reanalyzeProject(id, body);
+    return jsonOk(project);
+  } catch (error) {
+    return jsonError(errorMessage(error, "重新分析失败"), 500);
+  }
 }

@@ -33,8 +33,8 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
     return (
       <div className="space-y-4">
         <p className="text-sm text-[var(--cta)]">{project.errorMessage ?? "还没有模版"}</p>
-        <a className="btn-secondary" href="/">
-          返回创建
+        <a className="btn-secondary" href={`/projects/${project.id}/outline`}>
+          返回确认主线
         </a>
       </div>
     );
@@ -98,7 +98,7 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
           className="field min-h-24"
           value={feedback}
           onChange={(event) => setFeedback(event.target.value)}
-          placeholder="例如：进度写轻了、技术实现再少讲一点"
+          placeholder="例如：结论再锋利一点、风险写轻了"
         />
         <button className="btn-primary" type="button" disabled={pending || !feedback.trim()} onClick={revise}>
           {pending ? "正在按意见重生成…" : "按意见重生成"}

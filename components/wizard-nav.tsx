@@ -1,5 +1,6 @@
 const STEPS = [
   { key: "create", label: "创建" },
+  { key: "confirm", label: "确认主线" },
   { key: "preview", label: "预览" },
   { key: "export", label: "导出" },
 ] as const;

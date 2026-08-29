@@ -459,7 +459,7 @@ function renderTechFocus(
   addHeadline(slide, spec, facts);
   addTakeaway(slide, spec, facts);
   renderBullets(slide, spec, facts, 1.75);
-  addFooter(slide, footerSource(resolveFacts(spec.factRefs, facts), "汇报原话"), page, total);
+  addFooter(slide, footerSource(resolveFacts(spec.factRefs, facts), "汇报背景"), page, total);
   if (spec.speakerNotes) slide.addNotes(spec.speakerNotes);
 }
 
