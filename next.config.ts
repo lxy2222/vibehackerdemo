@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  serverExternalPackages: ["pptxgenjs", "better-sqlite3", "xlsx"],
+  serverExternalPackages: ["pptxgenjs", "xlsx"],
 };
 
 export default nextConfig;

@@ -6,6 +6,8 @@ import { NotionConnect } from "@/components/notion-connect";
 import { VoiceTextarea } from "@/components/voice-textarea";
 import type { AuditCaseId } from "@/lib/demo/audit-cases";
 import { clearCreateDraft, loadCreateDraft, saveCreateDraft } from "@/lib/draft/form-draft";
+import { saveProject } from "@/lib/projects/session";
+import type { ProjectDTO } from "@/lib/projects/types";
 
 async function readError(response: Response) {
   const data = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -81,7 +83,8 @@ export function CreateForm() {
           setError(await readError(response));
           return;
         }
-        const project = (await response.json()) as { id: string };
+        const project = (await response.json()) as ProjectDTO;
+        saveProject(project);
         clearCreateDraft();
         router.push(`/projects/${project.id}/outline`);
       } catch (err) {

@@ -22,7 +22,7 @@
 | 校验 | Zod |
 | 大模型 | DeepSeek（OpenAI 兼容 Chat Completions，仅服务端） |
 | PPTX | PptxGenJS |
-| 数据 | SQLite（`data/app.db`）+ Drizzle + better-sqlite3 |
+| 数据 | 演示草稿存在浏览器 `sessionStorage`（关标签即清），服务端不落库 |
 | Notion | Public Integration OAuth，只读导入 |
 
 模型只负责理解、提炼、组织故事；TypeScript 负责 Deck 组装、裸数字检查、点名指标门禁和 PPT 渲染。禁止「材料 → LLM → PPTX」跳过确认和校验。
@@ -33,8 +33,6 @@
 - npm
 - DeepSeek API Key（分析主线和语义验收都需要）
 - Notion 为可选：不配置时，粘贴 / 口述路径仍可完整使用
-
-`better-sqlite3` 是原生模块，首次安装可能需要本机有编译工具链（macOS 一般已具备 Xcode Command Line Tools）。
 
 ## 快速开始
 
@@ -57,7 +55,7 @@ npm run dev
 
 打开 [http://localhost:3000](http://localhost:3000)。
 
-数据库会在首次请求时自动创建到 `data/app.db`，无需单独跑迁移。
+项目草稿保存在当前标签页的 `sessionStorage` 里，刷新可继续；关掉标签后需要重新创建。
 
 ## 环境变量
 
@@ -131,7 +129,7 @@ lib/
   presentation/      # DeckSpec → 网页预览 / PPTX
   validation/        # 代码验收（页数、时长、点名指标、裸数字）
   notion/            # OAuth 与只读导入
-  db/                # SQLite schema 与连接
+  projects/          # 无状态项目流程与 sessionStorage
   demo/              # 内置演示案例
 docs/superpowers/    # 产品说明与里程碑
 fixtures/audit/      # 验收用文本材料
@@ -139,8 +137,7 @@ fixtures/audit/      # 验收用文本材料
 
 本地运行时还会生成（已在 `.gitignore` 中忽略）：
 
-- `data/app.db`：项目、文件、Deck 记录
-- `uploads/`、`artifacts/`：上传文件与生成的 PPTX
+- `artifacts/`：`npm run generate:demo` 写出的示例 PPTX
 
 ## 本版不做
 

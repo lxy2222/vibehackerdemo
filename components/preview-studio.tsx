@@ -1,10 +1,11 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { AuditPanel } from "@/components/audit-panel";
 import { SlidePreview } from "@/components/slide-preview";
+import { fitDeckToPageCount } from "@/lib/presentation/from-analysis";
 import { clampPageCount, DEFAULT_PAGE_COUNT, MAX_PAGE_COUNT } from "@/lib/presentation/limits";
+import { SESSION_DECK_ID } from "@/lib/projects/types";
 import type { AuditReport } from "@/lib/schemas/audit";
 import type { ProjectDTO } from "@/lib/projects/types";
 
@@ -13,8 +14,27 @@ async function readError(response: Response) {
   return data?.error ?? `请求失败 (${response.status})`;
 }
 
-export function PreviewStudio({ project }: { project: ProjectDTO }) {
-  const router = useRouter();
+async function downloadPptx(response: Response, fallback = "汇报.pptx") {
+  const blob = await response.blob();
+  const header = response.headers.get("Content-Disposition") ?? "";
+  const encoded = /filename\*=UTF-8''([^;]+)/.exec(header);
+  const plain = /filename="([^"]+)"/.exec(header);
+  const name = encoded ? decodeURIComponent(encoded[1]) : (plain?.[1] ?? fallback);
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = name;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+export function PreviewStudio({
+  project,
+  onProjectChange,
+}: {
+  project: ProjectDTO;
+  onProjectChange: (project: ProjectDTO) => void;
+}) {
   const slideCount = clampPageCount(project.deck?.slides.length ?? DEFAULT_PAGE_COUNT);
   const [feedback, setFeedback] = useState("");
   const [pageCount, setPageCount] = useState(slideCount);
@@ -40,14 +60,18 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
   function runAudit() {
     startAudit(async () => {
       setError(null);
-      const response = await fetch(`/api/projects/${project.id}/audit`, { method: "POST" });
+      const response = await fetch(`/api/projects/${project.id}/audit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project }),
+      });
       if (!response.ok) {
         setError(await readError(response));
         return;
       }
       const next = (await response.json()) as ProjectDTO;
+      onProjectChange(next);
       setAudit(next.audit);
-      router.refresh();
     });
   }
 
@@ -76,35 +100,43 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
       const response = await fetch(`/api/projects/${project.id}/revise`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feedback }),
+        body: JSON.stringify({ project, feedback }),
       });
       if (!response.ok) {
         setError(await readError(response));
         return;
       }
+      const next = (await response.json()) as ProjectDTO;
+      onProjectChange(next);
       setFeedback("");
       setAudit(null);
-      router.refresh();
     });
   }
 
   function exportPptx() {
     startExport(async () => {
       setError(null);
-      const response = await fetch(`/api/projects/${project.id}/generate`, {
+      if (!project.deck) {
+        setError("还没有模版");
+        return;
+      }
+      const next: ProjectDTO = {
+        ...project,
+        deck: fitDeckToPageCount(project.deck, pageCount),
+        deckId: SESSION_DECK_ID,
+        errorMessage: null,
+      };
+      onProjectChange(next);
+      const response = await fetch("/api/pptx", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pageCount }),
+        body: JSON.stringify({ project: next, pageCount }),
       });
       if (!response.ok) {
         setError(await readError(response));
         return;
       }
-      const next = (await response.json()) as { deckId?: string };
-      if (next.deckId) {
-        window.location.href = `/api/decks/${next.deckId}/download`;
-      }
-      router.refresh();
+      await downloadPptx(response, `${next.deck?.title || "汇报"}.pptx`);
     });
   }
 
@@ -160,17 +192,8 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
           />
         </label>
         <button className="btn-secondary" type="button" disabled={exporting} onClick={exportPptx}>
-          {exporting ? "正在导出…" : "生成并下载 PPT"}
+          {exporting ? "正在导出…" : project.deckId ? "再次下载 PPT" : "生成并下载 PPT"}
         </button>
-        {project.deckId ? (
-          <p className="text-sm">
-            已有文件可{" "}
-            <a className="underline" href={`/api/decks/${project.deckId}/download`}>
-              再次下载
-            </a>
-            。
-          </p>
-        ) : null}
       </section>
 
       {error ? <p className="notice-error">{error}</p> : null}

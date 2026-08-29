@@ -33,7 +33,13 @@ function riskLines(analysis: { risks: string[]; missingInformation: string[] }) 
   return toLines([...analysis.risks, ...analysis.missingInformation]);
 }
 
-export function ConfirmForm({ project }: { project: ProjectDTO }) {
+export function ConfirmForm({
+  project,
+  onProjectChange,
+}: {
+  project: ProjectDTO;
+  onProjectChange: (project: ProjectDTO) => void;
+}) {
   const router = useRouter();
   const initial = project.analysis;
   const [reportBackground, setReportBackground] = useState(project.leaderRequest);
@@ -113,6 +119,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          project,
           reportBackground,
           materials,
           analysis: { ...currentAnalysis(), intent: selectedIntent },
@@ -123,10 +130,11 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         setError(await readError(response));
         return;
       }
-      applyProject((await response.json()) as ProjectDTO);
+      const next = (await response.json()) as ProjectDTO;
+      onProjectChange(next);
+      applyProject(next);
       clearConfirmDraft(project.id);
       setEditingSource(false);
-      router.refresh();
     });
   }
 
@@ -137,6 +145,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          project,
           reportBackground,
           materials,
           analysis: currentAnalysis(),
@@ -146,6 +155,8 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         setError(await readError(response));
         return;
       }
+      const next = (await response.json()) as ProjectDTO;
+      onProjectChange(next);
       clearConfirmDraft(project.id);
       router.push(`/projects/${project.id}/preview`);
     });

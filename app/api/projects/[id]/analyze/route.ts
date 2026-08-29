@@ -1,4 +1,4 @@
-import { reanalyzeProject } from "@/lib/projects/service";
+import { readProjectDto, reanalyzeProject } from "@/lib/projects/service";
 import type { ReportAnalysis } from "@/lib/schemas/analysis";
 import { errorMessage, jsonError, jsonOk } from "@/lib/http/respond";
 
@@ -12,12 +12,17 @@ export async function POST(
   try {
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as {
+      project?: unknown;
       reportBackground?: string;
       materials?: string;
       analysis?: unknown;
       lockedIntent?: unknown;
     };
-    const project = await reanalyzeProject(id, {
+    const current = readProjectDto(body.project);
+    if (current.id !== id) {
+      return jsonError("项目不存在", 404);
+    }
+    const project = await reanalyzeProject(current, {
       reportBackground: body.reportBackground,
       materials: body.materials,
       analysis: body.analysis,

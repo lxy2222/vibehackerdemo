@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import { analyzeNarrative } from "@/lib/llm/analyze-narrative";
 import { generateConsultingDeck } from "@/lib/llm/deck";
 import { reviseDeckFromFeedback } from "@/lib/llm/revise-deck";
@@ -20,92 +19,31 @@ import {
   withoutPptNotes,
 } from "@/lib/presentation/ppt-feedback";
 import type { Fact } from "@/lib/presentation/types";
-import { briefSchema, type Brief } from "@/lib/schemas/brief";
-import { auditReportSchema, type AuditReport } from "@/lib/schemas/audit";
+import { briefSchema } from "@/lib/schemas/brief";
 import type { DeckSpec } from "@/lib/schemas/deck";
 import { auditProject } from "@/lib/llm/audit";
 import { DEMO_MATERIALS, DEMO_REPORT_BACKGROUND } from "@/lib/demo/narrative";
-import { saveArtifact } from "@/lib/storage/files";
-import {
-  createProjectRow,
-  getDeckRow,
-  getProjectRow,
-  insertDeckRow,
-  updateProjectRow,
-} from "@/lib/projects/store";
-import type { ProjectDTO, ProjectRecord, ProjectStatus } from "@/lib/projects/types";
+import { SESSION_DECK_ID, type ProjectDTO } from "@/lib/projects/types";
 
-function parseJson<T>(raw: string | null, fallback: T): T {
-  if (!raw) {
-    return fallback;
+export function readProjectDto(value: unknown): ProjectDTO {
+  if (!value || typeof value !== "object") {
+    throw new Error("项目不存在");
   }
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
+  const project = value as ProjectDTO;
+  if (typeof project.id !== "string" || !project.id) {
+    throw new Error("项目不存在");
   }
-}
-
-function asStatus(raw: string): ProjectStatus {
-  if (raw === "ready" || raw === "generating" || raw === "draft" || raw === "failed") {
-    return raw;
+  if (typeof project.leaderRequest !== "string") {
+    throw new Error("项目不存在");
   }
-  if (raw === "completed" || raw === "review_required") {
-    return "ready";
-  }
-  return "draft";
+  return project;
 }
 
-function parseAnalysis(raw: string | null): ReportAnalysis | null {
-  const parsed = reportAnalysisSchema.safeParse(parseJson(raw, null));
-  return parsed.success ? parsed.data : null;
-}
-
-function parseAudit(raw: string | null): AuditReport | null {
-  const parsed = auditReportSchema.safeParse(parseJson(raw, null));
-  return parsed.success ? parsed.data : null;
-}
-
-export function toDTO(project: ProjectRecord): ProjectDTO {
-  const analysis = parseAnalysis(project.analysis);
-  const durationMinutes = analysis
-    ? durationForIntent(analysis.intent, project.durationMinutes)
-    : project.durationMinutes || DEFAULT_DURATION_MINUTES;
-  const stored = parseJson<DeckSpec | null>(project.deckSpec, null);
-  const rawDeck = stored?.slides?.length ? stored : null;
-  const deck = rawDeck
-    ? stampDeckDuration(rawDeck, analysis ? INTENT_LABELS[analysis.intent] : "工作汇报", durationMinutes)
-    : null;
-  return {
-    id: project.id,
-    status: asStatus(project.status),
-    leaderRequest: project.leaderRequest,
-    durationMinutes,
-    materials: project.notesChunks ?? "",
-    brief: parseJson<Brief | null>(project.brief, null),
-    analysis,
-    audit: parseAudit(project.audit),
-    facts: parseJson<Fact[]>(project.facts, []),
-    deck,
-    deckId: project.deckId,
-    errorMessage: project.errorMessage,
-  };
-}
-
-export function getProjectDTO(id: string): ProjectDTO | null {
-  const project = getProjectRow(id);
-  if (!project) {
-    return null;
-  }
-  return toDTO(project);
-}
-
-function requireAnalysis(project: ProjectRecord): ReportAnalysis {
-  const analysis = parseAnalysis(project.analysis);
-  if (!analysis) {
+function requireAnalysis(project: ProjectDTO): ReportAnalysis {
+  if (!project.analysis) {
     throw new Error("还没有分析主线，请先确认一句话汇报");
   }
-  return analysis;
+  return project.analysis;
 }
 
 async function buildConsultingDeck(input: {
@@ -131,15 +69,15 @@ async function buildConsultingDeck(input: {
 }
 
 async function runAnalysis(
-  project: ProjectRecord,
+  project: ProjectDTO,
   current?: ReportAnalysis,
   lockedIntent?: ReportAnalysis["intent"],
   options?: { generateDeck?: boolean },
-) {
+): Promise<ProjectDTO> {
   const preservedPpt = pptNotesFrom(current?.excludedDetails ?? []);
   const analysis = await analyzeNarrative({
     reportBackground: project.leaderRequest,
-    materials: project.notesChunks ?? "",
+    materials: project.materials,
     durationMinutes: project.durationMinutes,
     current: current
       ? { ...current, excludedDetails: withoutPptNotes(current.excludedDetails) }
@@ -151,33 +89,28 @@ async function runAnalysis(
   const deck = options?.generateDeck
     ? await buildConsultingDeck({
         reportBackground: project.leaderRequest,
-        materials: project.notesChunks ?? "",
+        materials: project.materials,
         durationMinutes,
         analysis,
       })
     : null;
-  updateProjectRow(project.id, {
+  return {
+    ...project,
     status: "ready",
     durationMinutes,
-    analysis: JSON.stringify(analysis),
-    deckSpec: deck ? JSON.stringify(deck) : null,
-    facts: JSON.stringify([]),
+    analysis,
+    deck,
+    facts: [],
     audit: null,
     errorMessage: null,
-  });
-  return getProjectDTO(project.id)!;
+  };
 }
 
-async function applyPptRevision(projectId: string, feedback: string) {
-  const project = getProjectRow(projectId);
-  if (!project) {
-    throw new Error("项目不存在");
-  }
+async function applyPptRevision(project: ProjectDTO, feedback: string): Promise<ProjectDTO> {
   const analysis = requireAnalysis(project);
   const durationMinutes = durationForIntent(analysis.intent, project.durationMinutes);
-  const preview = toDTO(project);
   const base =
-    preview.deck ??
+    project.deck ??
     deckFromAnalysis({
       reportBackground: project.leaderRequest,
       durationMinutes,
@@ -193,7 +126,7 @@ async function applyPptRevision(projectId: string, feedback: string) {
       current: deck,
       durationMinutes,
       reportBackground: project.leaderRequest,
-      materials: project.notesChunks ?? "",
+      materials: project.materials,
     });
   } else {
     deck = ensureCover(deck);
@@ -205,16 +138,17 @@ async function applyPptRevision(projectId: string, feedback: string) {
     }
   }
   deck = stampDeckDuration(deck, INTENT_LABELS[analysis.intent], durationMinutes);
-  updateProjectRow(projectId, {
+  return {
+    ...project,
     status: "ready",
-    analysis: JSON.stringify({
+    analysis: {
       ...analysis,
       excludedDetails: [...withoutPptNotes(analysis.excludedDetails), toPptNote(feedback)],
-    }),
-    deckSpec: JSON.stringify(deck),
+    },
+    deck,
     audit: null,
     errorMessage: null,
-  });
+  };
 }
 
 export async function createAndAnalyze(input: {
@@ -233,27 +167,26 @@ export async function createAndAnalyze(input: {
     throw new Error("请填写一句话汇报");
   }
 
-  const project = createProjectRow({
+  const project: ProjectDTO = {
+    id: crypto.randomUUID(),
+    status: "generating",
     leaderRequest: reportBackground,
     durationMinutes,
-    notesChunks: materials,
-  });
+    materials,
+    brief: null,
+    analysis: null,
+    audit: null,
+    facts: [],
+    deck: null,
+    deckId: null,
+    errorMessage: null,
+  };
 
-  updateProjectRow(project.id, { status: "generating", errorMessage: null });
-
-  try {
-    return await runAnalysis(getProjectRow(project.id)!);
-  } catch (error) {
-    updateProjectRow(project.id, {
-      status: "failed",
-      errorMessage: error instanceof Error ? error.message : "分析失败",
-    });
-    throw error;
-  }
+  return runAnalysis(project);
 }
 
 export async function reanalyzeProject(
-  projectId: string,
+  project: ProjectDTO,
   input: {
     reportBackground?: string;
     materials?: string;
@@ -261,16 +194,11 @@ export async function reanalyzeProject(
     lockedIntent?: ReportAnalysis["intent"];
   },
 ): Promise<ProjectDTO> {
-  const project = getProjectRow(projectId);
-  if (!project) {
-    throw new Error("项目不存在");
-  }
-
   const reportBackground = (input.reportBackground ?? project.leaderRequest).trim();
-  const materials = (input.materials ?? project.notesChunks ?? "").trim();
+  const materials = (input.materials ?? project.materials).trim();
   const current = input.analysis
     ? reportAnalysisSchema.parse(input.analysis)
-    : parseAnalysis(project.analysis) ?? undefined;
+    : (project.analysis ?? undefined);
   const lockedIntent = REPORT_INTENTS.includes(input.lockedIntent as ReportAnalysis["intent"])
     ? (input.lockedIntent as ReportAnalysis["intent"])
     : undefined;
@@ -279,38 +207,28 @@ export async function reanalyzeProject(
     throw new Error("请填写一句话汇报");
   }
 
-  updateProjectRow(projectId, {
-    status: "generating",
-    leaderRequest: reportBackground,
-    notesChunks: materials,
-    analysis: seed ? JSON.stringify(seed) : project.analysis,
-    audit: null,
-    errorMessage: null,
-  });
-
-  try {
-    return await runAnalysis(getProjectRow(projectId)!, seed, lockedIntent);
-  } catch (error) {
-    updateProjectRow(projectId, {
-      status: "failed",
-      errorMessage: error instanceof Error ? error.message : "重新分析失败",
-    });
-    throw error;
-  }
+  return runAnalysis(
+    {
+      ...project,
+      status: "generating",
+      leaderRequest: reportBackground,
+      materials,
+      analysis: seed ?? project.analysis,
+      audit: null,
+      errorMessage: null,
+    },
+    seed,
+    lockedIntent,
+  );
 }
 
 export async function saveAnalysis(
-  projectId: string,
+  project: ProjectDTO,
   input: { reportBackground?: string; materials?: string; analysis: unknown },
 ): Promise<ProjectDTO> {
-  const project = getProjectRow(projectId);
-  if (!project) {
-    throw new Error("项目不存在");
-  }
-
   const analysis = reportAnalysisSchema.parse(input.analysis);
   const reportBackground = (input.reportBackground ?? project.leaderRequest).trim();
-  const materials = (input.materials ?? project.notesChunks ?? "").trim();
+  const materials = (input.materials ?? project.materials).trim();
   if (!reportBackground) {
     throw new Error("请填写一句话汇报");
   }
@@ -322,25 +240,21 @@ export async function saveAnalysis(
     analysis,
   });
 
-  updateProjectRow(projectId, {
+  return {
+    ...project,
     status: "ready",
     durationMinutes,
     leaderRequest: reportBackground,
-    notesChunks: materials,
-    analysis: JSON.stringify(analysis),
-    deckSpec: JSON.stringify(deck),
-    facts: JSON.stringify([]),
+    materials,
+    analysis,
+    deck,
+    facts: [],
     audit: null,
     errorMessage: null,
-  });
-  return getProjectDTO(projectId)!;
+  };
 }
 
-export async function reviseProject(projectId: string, feedback: string): Promise<ProjectDTO> {
-  const project = getProjectRow(projectId);
-  if (!project) {
-    throw new Error("项目不存在");
-  }
+export async function reviseProject(project: ProjectDTO, feedback: string): Promise<ProjectDTO> {
   const trimmed = feedback.trim();
   if (!trimmed) {
     throw new Error("请填写修改意见");
@@ -349,50 +263,36 @@ export async function reviseProject(projectId: string, feedback: string): Promis
   const current = requireAnalysis(project);
   const ppt = isPptFeedback(trimmed);
   const content = isContentFeedback(trimmed) || !ppt;
-  updateProjectRow(projectId, { status: "generating", errorMessage: null });
+  let next: ProjectDTO = { ...project, status: "generating", errorMessage: null };
 
-  try {
-    if (content) {
-      await runAnalysis(
-        getProjectRow(projectId)!,
-        {
-          ...current,
-          excludedDetails: [...withoutPptNotes(current.excludedDetails), `用户意见：${trimmed}`],
-        },
-        undefined,
-        { generateDeck: !ppt },
-      );
-    }
-    if (ppt) {
-      await applyPptRevision(projectId, trimmed);
-    } else {
-      const lastPpt = pptNotesFrom(requireAnalysis(getProjectRow(projectId)!).excludedDetails).at(-1);
-      if (lastPpt) {
-        await applyPptRevision(projectId, lastPpt.slice(PPT_NOTE_PREFIX.length));
-      }
-    }
-    return getProjectDTO(projectId)!;
-  } catch (error) {
-    updateProjectRow(projectId, {
-      status: "ready",
-      errorMessage: error instanceof Error ? error.message : "按意见重生成失败",
-    });
-    throw error;
+  if (content) {
+    next = await runAnalysis(
+      next,
+      {
+        ...current,
+        excludedDetails: [...withoutPptNotes(current.excludedDetails), `用户意见：${trimmed}`],
+      },
+      undefined,
+      { generateDeck: !ppt },
+    );
   }
+  if (ppt) {
+    next = await applyPptRevision(next, trimmed);
+  } else {
+    const lastPpt = pptNotesFrom(requireAnalysis(next).excludedDetails).at(-1);
+    if (lastPpt) {
+      next = await applyPptRevision(next, lastPpt.slice(PPT_NOTE_PREFIX.length));
+    }
+  }
+  return next;
 }
 
-export async function exportProjectPptx(projectId: string, requestedPageCount: number): Promise<ProjectDTO> {
-  const project = getProjectRow(projectId);
-  if (!project) {
-    throw new Error("项目不存在");
-  }
-
-  const analysis = parseAnalysis(project.analysis);
+export function prepareExport(project: ProjectDTO, requestedPageCount: number): ProjectDTO {
+  const analysis = project.analysis;
   const durationMinutes = analysis
     ? durationForIntent(analysis.intent, project.durationMinutes)
     : project.durationMinutes;
-  const preview = toDTO(project);
-  let deck = preview.deck;
+  let deck = project.deck;
   if (!deck && analysis) {
     deck = deckFromAnalysis({
       reportBackground: project.leaderRequest,
@@ -404,94 +304,44 @@ export async function exportProjectPptx(projectId: string, requestedPageCount: n
     throw new Error("还没有模版");
   }
   deck = fitDeckToPageCount(deck, requestedPageCount);
-
-  updateProjectRow(projectId, { status: "generating", errorMessage: null });
-
-  try {
-    const facts = parseJson<Fact[]>(project.facts, []);
-    const buffer = await generatePptxBuffer(deck, facts);
-    if (!buffer.length) {
-      throw new Error("已导出的 PPTX 是空文件");
-    }
-    const deckId = crypto.randomUUID();
-    const pptxPath = await saveArtifact(deckId, buffer);
-    insertDeckRow({
-      id: deckId,
-      projectId,
-      spec: JSON.stringify(deck),
-      facts: JSON.stringify(facts),
-      pptxPath,
-    });
-    updateProjectRow(projectId, {
-      status: "ready",
-      deckId,
-      deckSpec: JSON.stringify(deck),
-      errorMessage: null,
-    });
-    return getProjectDTO(projectId)!;
-  } catch (error) {
-    updateProjectRow(projectId, {
-      status: "ready",
-      errorMessage: error instanceof Error ? error.message : "导出 PPT 失败",
-    });
-    throw error;
-  }
+  return {
+    ...project,
+    status: "ready",
+    deck,
+    deckId: SESSION_DECK_ID,
+    errorMessage: null,
+  };
 }
 
-export async function auditProjectById(projectId: string): Promise<ProjectDTO> {
-  const project = getProjectRow(projectId);
-  if (!project) {
-    throw new Error("项目不存在");
+export async function renderProjectPptx(project: ProjectDTO): Promise<{ filename: string; bytes: Buffer }> {
+  if (!project.deck) {
+    throw new Error("还没有模版");
   }
-
-  let pptxBytes: number | null = null;
-  if (project.deckId) {
-    const row = getDeckRow(project.deckId);
-    if (row) {
-      try {
-        const bytes = await fs.readFile(row.pptxPath);
-        pptxBytes = bytes.length;
-      } catch {
-        pptxBytes = 0;
-      }
-    }
+  const facts: Fact[] = project.facts ?? [];
+  const bytes = await generatePptxBuffer(project.deck, facts);
+  if (!bytes.length) {
+    throw new Error("已导出的 PPTX 是空文件");
   }
+  return { filename: `${project.deck.title || "汇报"}.pptx`, bytes };
+}
 
-  const dto = toDTO(project);
-
+export async function auditProjectDto(project: ProjectDTO): Promise<ProjectDTO> {
   const report = await auditProject({
     reportBackground: project.leaderRequest,
-    materials: project.notesChunks ?? "",
-    durationMinutes: dto.durationMinutes,
-    analysis: dto.analysis,
-    deck: dto.deck,
-    facts: dto.facts,
-    pptxBytes,
+    materials: project.materials,
+    durationMinutes: project.durationMinutes,
+    analysis: project.analysis,
+    deck: project.deck,
+    facts: project.facts,
+    pptxBytes: null,
   });
 
-  updateProjectRow(projectId, {
+  return {
+    ...project,
     status: "ready",
-    audit: JSON.stringify(report),
+    audit: report,
     errorMessage: null,
-  });
-  return getProjectDTO(projectId)!;
-}
-
-export async function readDeckPptx(deckId: string): Promise<{ filename: string; bytes: Buffer }> {
-  const row = getDeckRow(deckId);
-  if (!row) {
-    throw new Error("文件不存在");
-  }
-
-  const spec = parseJson<DeckSpec>(row.spec, { title: "汇报", subtitle: "", slides: [] });
-  try {
-    const bytes = await fs.readFile(row.pptxPath);
-    return { filename: `${spec.title || "汇报"}.pptx`, bytes };
-  } catch {
-    const facts = parseJson<Fact[]>(row.facts, []);
-    const bytes = await generatePptxBuffer(spec, facts);
-    return { filename: `${spec.title || "汇报"}.pptx`, bytes };
-  }
+  };
 }
 
 export function createAndGenerateTemplate(input: {
