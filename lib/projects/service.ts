@@ -138,6 +138,7 @@ export async function createAndAnalyze(input: {
 export async function reanalyzeProject(
   projectId: string,
   input: {
+    reportBackground?: string;
     materials?: string;
     analysis?: unknown;
   },
@@ -147,13 +148,18 @@ export async function reanalyzeProject(
     throw new Error("项目不存在");
   }
 
+  const reportBackground = (input.reportBackground ?? project.leaderRequest).trim();
   const materials = (input.materials ?? project.notesChunks ?? "").trim();
   const current = input.analysis
     ? reportAnalysisSchema.parse(input.analysis)
     : parseAnalysis(project.analysis) ?? undefined;
+  if (!reportBackground) {
+    throw new Error("请填写最初的汇报背景");
+  }
 
   updateProjectRow(projectId, {
     status: "generating",
+    leaderRequest: reportBackground,
     notesChunks: materials,
     analysis: current ? JSON.stringify(current) : project.analysis,
     errorMessage: null,
@@ -172,7 +178,7 @@ export async function reanalyzeProject(
 
 export async function saveAnalysis(
   projectId: string,
-  input: { materials?: string; analysis: unknown },
+  input: { reportBackground?: string; materials?: string; analysis: unknown },
 ): Promise<ProjectDTO> {
   const project = getProjectRow(projectId);
   if (!project) {
@@ -180,15 +186,20 @@ export async function saveAnalysis(
   }
 
   const analysis = reportAnalysisSchema.parse(input.analysis);
+  const reportBackground = (input.reportBackground ?? project.leaderRequest).trim();
   const materials = (input.materials ?? project.notesChunks ?? "").trim();
+  if (!reportBackground) {
+    throw new Error("请填写最初的汇报背景");
+  }
   const deck = deckFromAnalysis({
-    reportBackground: project.leaderRequest,
+    reportBackground,
     durationMinutes: project.durationMinutes,
     analysis,
   });
 
   updateProjectRow(projectId, {
     status: "ready",
+    leaderRequest: reportBackground,
     notesChunks: materials,
     analysis: JSON.stringify(analysis),
     deckSpec: JSON.stringify(deck),

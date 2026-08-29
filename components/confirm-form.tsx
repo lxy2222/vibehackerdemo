@@ -10,6 +10,7 @@ import {
 } from "@/lib/schemas/analysis";
 import type { ProjectDTO } from "@/lib/projects/types";
 import { NotionConnect } from "@/components/notion-connect";
+import { VoiceTextarea } from "@/components/voice-textarea";
 
 async function readError(response: Response) {
   const data = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -34,6 +35,7 @@ function riskLines(analysis: { risks: string[]; missingInformation: string[] }) 
 export function ConfirmForm({ project }: { project: ProjectDTO }) {
   const router = useRouter();
   const initial = project.analysis;
+  const [reportBackground, setReportBackground] = useState(project.leaderRequest);
   const [materials, setMaterials] = useState(project.materials);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [leaderQuestion, setLeaderQuestion] = useState(initial?.leaderQuestion ?? "");
@@ -68,6 +70,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
     if (!next.analysis) {
       return;
     }
+    setReportBackground(next.leaderRequest);
     setMaterials(next.materials);
     setTitle(next.analysis.title);
     setLeaderQuestion(next.analysis.leaderQuestion);
@@ -86,6 +89,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          reportBackground,
           materials,
           analysis: currentAnalysis(),
         }),
@@ -106,6 +110,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          reportBackground,
           materials,
           analysis: currentAnalysis(),
         }),
@@ -131,6 +136,17 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
 
   return (
     <div className="space-y-6">
+      <section className="panel space-y-3 p-5">
+        <VoiceTextarea
+          label="我最初的汇报背景"
+          value={reportBackground}
+          onChange={setReportBackground}
+          placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪"
+          required
+          minClassName="min-h-24"
+        />
+      </section>
+
       <section className="panel space-y-3 p-5">
         <h2 className="text-sm font-medium">工作对话或材料</h2>
         <NotionConnect

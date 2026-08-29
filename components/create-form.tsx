@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { NotionConnect } from "@/components/notion-connect";
+import { VoiceTextarea } from "@/components/voice-textarea";
 
 async function readError(response: Response) {
   const data = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -70,19 +71,16 @@ export function CreateForm() {
         submit();
       }}
     >
-      <label className="block space-y-2">
-        <span className="text-sm font-medium">我最初的汇报背景</span>
-        <textarea
-          className="field min-h-32"
-          value={reportBackground}
-          onChange={(event) => {
-            setReportBackground(event.target.value);
-            setUseDemo(false);
-          }}
-          placeholder="写下这次想讲什么、给谁讲、现在卡在哪，例如周五给管理层十分钟，重点讲复用后的交付效率"
-          required
-        />
-      </label>
+      <VoiceTextarea
+        label="我最初的汇报背景"
+        value={reportBackground}
+        onChange={(next) => {
+          setReportBackground(next);
+          setUseDemo(false);
+        }}
+        placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪，例如周五给管理层十分钟，重点讲复用后的交付效率"
+        required
+      />
 
       <div className="space-y-3">
         <span className="text-sm font-medium">工作对话或材料</span>

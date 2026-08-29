@@ -9,7 +9,7 @@ export default function HomePage() {
         <p className="kicker">汇报不返工</p>
         <h1 className="text-4xl font-semibold tracking-tight">先把问题讲清楚</h1>
         <p className="max-w-xl text-[15px] leading-7 text-[var(--olive)]">
-          写下最初的汇报背景，再贴一段工作对话。系统先分析领导要判断的问题、风险点和下一步，你改完再出预览。
+          写下或口述最初的汇报背景，再贴一段工作对话。系统先分析领导要判断的问题、风险点和下一步，你改完再出预览。
         </p>
       </div>
       <WizardNav current="create" />

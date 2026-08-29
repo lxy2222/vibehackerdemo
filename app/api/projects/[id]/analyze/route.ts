@@ -11,6 +11,7 @@ export async function POST(
   try {
     const { id } = await context.params;
     const body = (await request.json().catch(() => ({}))) as {
+      reportBackground?: string;
       materials?: string;
       analysis?: unknown;
     };

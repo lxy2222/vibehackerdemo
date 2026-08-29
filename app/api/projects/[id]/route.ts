@@ -22,6 +22,7 @@ export async function PATCH(
   try {
     const { id } = await context.params;
     const body = (await request.json()) as {
+      reportBackground?: string;
       materials?: string;
       analysis?: unknown;
     };
@@ -29,6 +30,7 @@ export async function PATCH(
       return jsonError("请填写分析主线");
     }
     const project = await saveAnalysis(id, {
+      reportBackground: body.reportBackground,
       materials: body.materials,
       analysis: body.analysis,
     });
