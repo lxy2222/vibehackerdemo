@@ -17,7 +17,7 @@ function CopyButton({ text }: { text: string }) {
         window.setTimeout(() => setCopied(false), 1500);
       }}
     >
-      {copied ? "已复制" : "复制交付消息"}
+      {copied ? "已复制" : "复制一句话汇报"}
     </button>
   );
 }
@@ -87,7 +87,7 @@ export function AuditPanel({
           {audit.deliveryMessage ? (
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-sm font-medium">交付消息</p>
+                <p className="text-sm font-medium">一句话汇报</p>
                 <CopyButton text={audit.deliveryMessage} />
               </div>
               <p className="rounded-xl bg-white/70 px-3 py-3 text-sm leading-6">{audit.deliveryMessage}</p>

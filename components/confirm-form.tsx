@@ -178,7 +178,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
     <div className="space-y-8">
       <div className="flex flex-col gap-3 sm:flex-row">
         <button className="btn-secondary" type="button" disabled={analyzing || saving} onClick={toggleSource}>
-          {editingSource ? "收起背景" : "重新生成背景"}
+          {editingSource ? "收起" : "修改一句话汇报"}
         </button>
         {editingSource ? (
           <button className="btn-secondary" type="button" disabled={analyzing || saving} onClick={() => reanalyze()}>
@@ -191,15 +191,16 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         <div ref={sourceRef} className="grid gap-6 lg:grid-cols-2 lg:items-start">
           <section className="panel space-y-4 p-7">
             <VoiceTextarea
-              label="我最初的汇报背景"
+              label="一句话汇报"
+              hint="用来提炼给老板的一句话汇报总结。"
               value={reportBackground}
               onChange={(next) => {
                 setReportBackground(next);
                 persistDraft({ reportBackground: next });
               }}
-              placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪"
+              placeholder="用一句话写下这次要跟老板说的结论"
               required
-              minClassName="min-h-36"
+              minClassName="min-h-28"
             />
           </section>
 
@@ -224,7 +225,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
                 persistDraft({ materials: event.target.value });
               }}
             />
-            <p className="text-base text-[var(--olive)]">改完背景或材料后点「重新分析」，会按新内容重写主线。</p>
+            <p className="text-base text-[var(--olive)]">改完一句话汇报或材料后点「重新分析」，会按新内容重写主线。</p>
           </section>
         </div>
       ) : null}
@@ -285,8 +286,10 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
             className="field min-h-20"
             value={coreConclusion}
             onChange={(event) => setCoreConclusion(event.target.value)}
+            placeholder="给老板的一句话汇报总结"
             required
           />
+          <p className="text-base text-[var(--olive)]">从你的一句话汇报里提炼，确认后可直接对老板说。</p>
         </label>
 
         <label className="block space-y-2">

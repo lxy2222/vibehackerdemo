@@ -10,6 +10,7 @@ import {
   interpolate,
   resolveFacts,
 } from "@/lib/presentation/facts";
+import { pad2 } from "@/lib/presentation/ppt-style";
 import { theme } from "@/lib/presentation/theme";
 import { isFunnelStageFact } from "@/lib/facts/from-brief";
 import { isConsultingLayout, type LayoutId } from "@/lib/schemas/deck";
@@ -19,17 +20,12 @@ import type { DeckSpec, Fact, SlideSpec } from "@/lib/presentation/types";
 type Pres = InstanceType<typeof PptxGenJS>;
 type Slide = ReturnType<Pres["addSlide"]>;
 
-const CHART_COLORS = [
-  theme.primary,
-  theme.accent,
-  theme.secondary,
-  theme.muted,
-];
+const CHART_COLORS = [theme.lime, theme.sage, theme.ink, theme.stone];
 
 function textOpts(overrides: Record<string, unknown> = {}) {
   return {
     fontFace: theme.font,
-    color: theme.title,
+    color: theme.ink,
     margin: 0,
     ...overrides,
   };
@@ -43,7 +39,7 @@ function addFooter(slide: Slide, source: string, page: number, total: number) {
     w: 10.5,
     h: 0.22,
   });
-  slide.addText(`${page} / ${total}`, {
+  slide.addText(`${pad2(page)} / ${pad2(total)}`, {
     ...textOpts({ color: theme.muted, fontSize: 10, align: "right" }),
     x: 11.2,
     y: 7.12,
@@ -54,61 +50,58 @@ function addFooter(slide: Slide, source: string, page: number, total: number) {
 
 function addHeadline(slide: Slide, spec: SlideSpec, facts: Map<string, Fact>) {
   slide.addShape("rect", {
-    x: 0,
-    y: 0,
-    w: 0.12,
-    h: 7.5,
-    fill: { color: theme.accent },
-    line: { color: theme.accent },
-  });
-  slide.addText(interpolate(spec.headline, facts), {
-    ...textOpts({ fontSize: 22, bold: true }),
     x: 0.5,
     y: 0.28,
     w: 12.3,
-    h: 0.45,
+    h: 0.012,
+    fill: { color: theme.line },
+    line: { color: theme.line },
+  });
+  slide.addText(interpolate(spec.headline, facts), {
+    ...textOpts({ fontSize: 20, bold: true }),
+    x: 0.5,
+    y: 0.4,
+    w: 12.3,
+    h: 0.5,
   });
 }
 
 function addTakeaway(slide: Slide, spec: SlideSpec, facts: Map<string, Fact>) {
-  slide.addShape("roundRect", {
+  slide.addText("→", {
+    ...textOpts({ fontSize: 14, color: theme.lime, bold: true }),
     x: 0.5,
-    y: 0.82,
-    w: 12.3,
-    h: 0.72,
-    fill: { color: theme.lavender },
-    rectRadius: 0.08,
-    line: { color: theme.cream },
+    y: 0.96,
+    w: 0.32,
+    h: 0.4,
   });
   slide.addText(interpolate(spec.takeaway, facts), {
-    ...textOpts({ fontSize: 14, color: theme.primary, bold: true }),
-    x: 0.7,
-    y: 0.9,
-    w: 11.9,
-    h: 0.56,
+    ...textOpts({ fontSize: 14, color: theme.ink, bold: true }),
+    x: 0.86,
+    y: 0.96,
+    w: 11.94,
+    h: 0.4,
     valign: "middle",
   });
 }
 
 function addMissingPlaceholder(slide: Slide) {
-  slide.addShape("roundRect", {
+  slide.addShape("rect", {
     x: 0.5,
     y: 1.8,
     w: 12.3,
     h: 4.8,
-    fill: { color: "F7F7F8" },
-    rectRadius: 0.1,
-    line: { color: "E4E4E7" },
+    fill: { color: theme.paperAlt },
+    line: { color: theme.line },
   });
   slide.addText("资料未提供", {
-    ...textOpts({ fontSize: 28, color: theme.muted, align: "center" }),
+    ...textOpts({ fontSize: 28, color: theme.ink, align: "center" }),
     x: 0.5,
     y: 3.4,
     w: 12.3,
     h: 0.6,
   });
   slide.addText("填写进度后，本页会显示对应内容。", {
-    ...textOpts({ fontSize: 13, color: theme.body, align: "center" }),
+    ...textOpts({ fontSize: 13, color: theme.muted, align: "center" }),
     x: 0.5,
     y: 4.05,
     w: 12.3,
@@ -123,49 +116,65 @@ function renderCover(pres: Pres, spec: SlideSpec, deck: DeckSpec) {
     y: 0,
     w: 13.333,
     h: 7.5,
-    fill: { color: theme.bg },
+    fill: { color: theme.ink },
   });
   slide.addShape("rect", {
-    x: 0,
-    y: 0,
-    w: 0.28,
-    h: 7.5,
-    fill: { color: theme.accent },
+    x: 0.7,
+    y: 0.58,
+    w: 0.18,
+    h: 0.18,
+    fill: { color: theme.lime },
+    line: { color: theme.lime },
   });
-  slide.addText("工作汇报", {
-    ...textOpts({ fontSize: 14, color: theme.primary, bold: true, align: "center" }),
-    x: 0.9,
-    y: 2.15,
-    w: 11.5,
-    h: 0.35,
+  slide.addText(spec.eyebrow || "MANAGEMENT BRIEFING", {
+    ...textOpts({ fontSize: 12, color: theme.lime, bold: true }),
+    x: 1.04,
+    y: 0.5,
+    w: 11.4,
+    h: 0.32,
   });
   slide.addText(spec.headline, {
-    ...textOpts({ fontSize: 40, bold: true, align: "center" }),
-    x: 0.9,
-    y: 2.55,
-    w: 11.5,
-    h: 0.9,
+    ...textOpts({ fontSize: spec.headline.length > 16 ? 32 : 40, color: theme.white, bold: true }),
+    x: 0.7,
+    y: 2.2,
+    w: 11.9,
+    h: 1.5,
+  });
+  slide.addShape("rect", {
+    x: 0.7,
+    y: 3.9,
+    w: 1.15,
+    h: 0.06,
+    fill: { color: theme.lime },
+    line: { color: theme.lime },
   });
   slide.addText(spec.takeaway, {
-    ...textOpts({ fontSize: 20, color: theme.accent, align: "center" }),
-    x: 0.9,
-    y: 3.5,
-    w: 11.5,
-    h: 0.45,
+    ...textOpts({ fontSize: 16, color: theme.sage }),
+    x: 0.7,
+    y: 4.2,
+    w: 11.9,
+    h: 0.7,
   });
   slide.addText(deck.subtitle, {
-    ...textOpts({ fontSize: 16, color: theme.body, align: "center" }),
-    x: 0.9,
-    y: 4.15,
-    w: 11.5,
-    h: 0.4,
+    ...textOpts({ fontSize: 13, color: theme.stone }),
+    x: 0.7,
+    y: 4.95,
+    w: 11.9,
+    h: 0.35,
   });
   slide.addText(spec.bullets.join("  ·  "), {
-    ...textOpts({ fontSize: 13, color: theme.muted, align: "center" }),
-    x: 0.9,
-    y: 6.55,
-    w: 11.5,
-    h: 0.35,
+    ...textOpts({ fontSize: 12, color: theme.stone }),
+    x: 0.7,
+    y: 6.85,
+    w: 9.6,
+    h: 0.32,
+  });
+  slide.addText("01", {
+    ...textOpts({ fontSize: 12, color: theme.lime, align: "right", bold: true }),
+    x: 10.6,
+    y: 6.85,
+    w: 2,
+    h: 0.32,
   });
 }
 
@@ -233,24 +242,25 @@ function renderKpiOverview(
   const cards = resolved.slice(0, 4);
   cards.forEach((fact, index) => {
     const x = 0.5 + index * 3.15;
-    slide.addShape("roundRect", {
+    slide.addShape("rect", {
       x,
       y: 2.1,
       w: 3.0,
       h: 3.6,
-      fill: { color: "FFFFFF" },
-      line: { color: "E4E4E7" },
-      rectRadius: 0.1,
+      fill: { color: index === 0 ? theme.lime : index === cards.length - 1 ? theme.ink : theme.white },
+      line: { color: index === 0 ? theme.lime : index === cards.length - 1 ? theme.ink : theme.line },
     });
+    const onDark = index === cards.length - 1;
+    const onLime = index === 0;
     slide.addText(fact.label, {
-      ...textOpts({ fontSize: 13, color: theme.muted }),
+      ...textOpts({ fontSize: 13, color: onDark ? theme.stone : onLime ? theme.ink : theme.muted }),
       x: x + 0.2,
       y: 2.35,
       w: 2.6,
       h: 0.45,
     });
     slide.addText(formatFactValue(fact), {
-      ...textOpts({ fontSize: 22, bold: true }),
+      ...textOpts({ fontSize: 22, bold: true, color: onDark ? theme.white : theme.ink }),
       x: x + 0.2,
       y: 3.1,
       w: 2.6,
@@ -258,7 +268,7 @@ function renderKpiOverview(
     });
     if (fact.period) {
       slide.addText(fact.period, {
-        ...textOpts({ fontSize: 13, color: theme.primary }),
+        ...textOpts({ fontSize: 13, color: onDark ? theme.lime : theme.sageDeep }),
         x: x + 0.2,
         y: 4.0,
         w: 2.6,
@@ -343,7 +353,7 @@ function renderComparison(
       barDir: "bar",
       showLegend: false,
       showValue: true,
-      chartColors: [theme.primary],
+      chartColors: [theme.lime],
       fontFace: theme.font,
       valAxisMinVal: 0,
       chartArea: { fill: { color: theme.bg } },
@@ -379,17 +389,21 @@ function renderFunnel(
     const width = 4 + (value / max) * 8.3;
     const x = 0.5 + (12.3 - width) / 2;
     const y = 1.78 + index * 1.05;
-    slide.addShape("roundRect", {
+    slide.addShape("rect", {
       x,
       y,
       w: width,
       h: 0.88,
-      fill: { color: index === 0 ? theme.primary : index === stages.length - 1 ? theme.accent : "7ED9C0" },
-      line: { color: "FFFFFF" },
-      rectRadius: 0.08,
+      fill: { color: index === 0 ? theme.lime : index === stages.length - 1 ? theme.ink : theme.sage },
+      line: { color: theme.paper },
     });
     slide.addText(`${fact.label}  ${formatFactValue(fact)}`, {
-      ...textOpts({ fontSize: 14, color: "FFFFFF", bold: true, align: "center" }),
+      ...textOpts({
+        fontSize: 14,
+        color: index === stages.length - 1 ? theme.white : theme.ink,
+        bold: true,
+        align: "center",
+      }),
       x,
       y: y + 0.18,
       w: width,
@@ -414,10 +428,10 @@ function renderProgress(
 
   const rows = [
     [
-      { text: "事项", options: { bold: true, color: "FFFFFF", fill: { color: theme.primary } } },
-      { text: "状态", options: { bold: true, color: "FFFFFF", fill: { color: theme.primary } } },
-      { text: "负责人", options: { bold: true, color: "FFFFFF", fill: { color: theme.primary } } },
-      { text: "说明", options: { bold: true, color: "FFFFFF", fill: { color: theme.primary } } },
+      { text: "事项", options: { bold: true, color: theme.white, fill: { color: theme.ink } } },
+      { text: "状态", options: { bold: true, color: theme.white, fill: { color: theme.ink } } },
+      { text: "负责人", options: { bold: true, color: theme.white, fill: { color: theme.ink } } },
+      { text: "说明", options: { bold: true, color: theme.white, fill: { color: theme.ink } } },
     ],
     ...spec.bullets.map((bullet) => {
       const [name, status, owner, note] = interpolate(bullet, facts)
@@ -440,7 +454,7 @@ function renderProgress(
       y: 1.8,
       w: 12.3,
       colW: [3.4, 1.8, 2.2, 4.9],
-      border: { pt: 0.5, color: "E4E4E7" },
+      border: { pt: 0.5, color: theme.line },
       color: theme.body,
       fontFace: theme.font,
       fontSize: 13,
@@ -511,9 +525,9 @@ function renderActionPlan(
 
   const rows = [
     [
-      { text: "行动", options: { bold: true, color: "FFFFFF", fill: { color: theme.primary } } },
-      { text: "负责人", options: { bold: true, color: "FFFFFF", fill: { color: theme.primary } } },
-      { text: "截止", options: { bold: true, color: "FFFFFF", fill: { color: theme.primary } } },
+      { text: "行动", options: { bold: true, color: theme.white, fill: { color: theme.ink } } },
+      { text: "负责人", options: { bold: true, color: theme.white, fill: { color: theme.ink } } },
+      { text: "截止", options: { bold: true, color: theme.white, fill: { color: theme.ink } } },
     ],
     ...spec.bullets.map((bullet) => {
       const [action, owner, due] = interpolate(bullet, facts)
@@ -532,7 +546,7 @@ function renderActionPlan(
     y: 1.8,
     w: 12.3,
     colW: [7.3, 2.8, 2.2],
-    border: { pt: 0.5, color: "E4E4E7" },
+    border: { pt: 0.5, color: theme.line },
     color: theme.body,
     fontFace: theme.font,
     fontSize: 14,

@@ -26,7 +26,7 @@ export default async function OutlinePage({
         <p className="kicker">确认汇报主线</p>
         <h1 className="font-display text-4xl tracking-tight">先看领导要判断什么</h1>
         <p className="text-base leading-7 text-[var(--olive)]">
-          先看分析出的主线。要改最初的背景或材料，点「重新生成背景」。
+          先看分析出的主线。要改一句话汇报或材料，点「修改一句话汇报」。
         </p>
       </div>
       <WizardNav current="confirm" />

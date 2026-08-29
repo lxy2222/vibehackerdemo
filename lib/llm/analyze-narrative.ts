@@ -46,7 +46,7 @@ export function normalizeAnalysis(value: ReportAnalysis): ReportAnalysis {
     ...value,
     title: clipTitle(value.title),
     leaderQuestion: clipLine(value.leaderQuestion, 56),
-    coreConclusion: clipLine(value.coreConclusion, 64),
+    coreConclusion: clipLine(value.coreConclusion, 48),
     keyFindings: clipList(value.keyFindings).map((item) => clipLine(item)),
     risks: clipList(value.risks).map((item) => clipLine(item)),
     nextActions: clipList(value.nextActions).map((item) => clipLine(item)),
@@ -71,7 +71,7 @@ export async function analyzeNarrative(input: {
     ? `用户刚把汇报目的改成「${INTENT_LABELS[locked]}」。按这个目的重新组织整份主线，不要只改 intent 字段。`
     : input.current
       ? "用户改过主线或补过材料。在现有主线基础上重分析，保留用户明确改过且材料仍支持的句子，不要编造。"
-      : "从汇报背景和对话中总结封面标题，并识别领导要判断的问题。";
+      : "从用户的一句话汇报和工作对话中，提炼给老板的一句话总结，并识别领导要判断的问题。";
 
   const parsed = await completeJsonWithRetry(
     {
@@ -79,9 +79,10 @@ export async function analyzeNarrative(input: {
       messages: [
         {
           role: "system",
-          content: `你是汇报主线分析器。根据用户的汇报背景和工作对话，提取领导这次要判断的问题、风险点和下一步。只返回 json。
+          content: `你是汇报主线分析器。根据用户的一句话汇报和工作对话，提炼给老板的一句话汇报总结，并提取领导这次要判断的问题、风险点和下一步。只返回 json。
 规则：
-- title 必须从汇报背景和材料里总结这次汇报的主题，8–16 个汉字，像「跨国家复用交付进展」。用名词短语，不要用结论整句，不要加「汇报」「PPT」后缀，不要从结论截断。
+- 用户填写的 reportBackground 是这次要对老板说的一句话汇报（草稿也可以）。coreConclusion 必须据此提炼成一句可直接对老板说的总结：先结论、含关键结果或卡点，完整一句、不超过 40 个汉字。不要扩写成段落，不要把材料细节塞进这一句。
+- title 必须从一句话汇报和材料里总结这次汇报的主题，8–16 个汉字，像「跨国家复用交付进展」。用名词短语，不要用结论整句，不要加「汇报」「PPT」后缀，不要从结论截断。
 - 不要编造材料里没有的数字、人名、国家或结论。
 - 材料不足、口径对不上、可能被追问的事项，一律写成风险点，写入 risks。不要使用「缺口」这个词。
 ${intentRule}

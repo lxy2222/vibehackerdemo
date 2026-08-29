@@ -103,7 +103,7 @@ export function getProjectDTO(id: string): ProjectDTO | null {
 function requireAnalysis(project: ProjectRecord): ReportAnalysis {
   const analysis = parseAnalysis(project.analysis);
   if (!analysis) {
-    throw new Error("还没有分析主线，请先确认汇报背景");
+    throw new Error("还没有分析主线，请先确认一句话汇报");
   }
   return analysis;
 }
@@ -230,7 +230,7 @@ export async function createAndAnalyze(input: {
     : (input.reportBackground ?? input.leaderRequest ?? "").trim();
   const materials = input.useDemo ? DEMO_MATERIALS : (input.materials ?? "").trim();
   if (!reportBackground) {
-    throw new Error("请填写最初的汇报背景");
+    throw new Error("请填写一句话汇报");
   }
 
   const project = createProjectRow({
@@ -276,7 +276,7 @@ export async function reanalyzeProject(
     : undefined;
   const seed = lockedIntent && current ? { ...current, intent: lockedIntent } : current;
   if (!reportBackground) {
-    throw new Error("请填写最初的汇报背景");
+    throw new Error("请填写一句话汇报");
   }
 
   updateProjectRow(projectId, {
@@ -312,7 +312,7 @@ export async function saveAnalysis(
   const reportBackground = (input.reportBackground ?? project.leaderRequest).trim();
   const materials = (input.materials ?? project.notesChunks ?? "").trim();
   if (!reportBackground) {
-    throw new Error("请填写最初的汇报背景");
+    throw new Error("请填写一句话汇报");
   }
   const durationMinutes = durationForIntent(analysis.intent, project.durationMinutes);
   const deck = await buildConsultingDeck({

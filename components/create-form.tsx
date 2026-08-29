@@ -100,16 +100,17 @@ export function CreateForm() {
     >
       <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
       <VoiceTextarea
-        label="我最初的汇报背景"
+        label="一句话汇报"
+        hint="用来提炼给老板的一句话汇报总结。工作材料负责补证据。"
         value={reportBackground}
         onChange={(next) => {
           setReportBackground(next);
           setLoadedCase(null);
           persistDraft({ reportBackground: next });
         }}
-        placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪，例如周五给管理层五分钟，重点讲复用后的交付效率"
+        placeholder="用一句话写下这次要跟老板说的结论，例如：印尼复用已把交付从三个月压到两周，下一步卡在新加坡设计人手"
         required
-        minClassName="min-h-48"
+        minClassName="min-h-28"
       />
 
       <div className="space-y-3">

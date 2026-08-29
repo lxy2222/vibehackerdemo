@@ -1,6 +1,6 @@
 export const CONSULTING_DECK_SYSTEM_PROMPT = `你是一名管理层汇报架构师和战略咨询顾问。
 
-你的任务是把用户的口述工作背景、Notion 工作材料和项目数据，整理成一份“咨询公司式高信息密度”的管理层汇报 PPT。
+你的任务是把用户要对老板说的一句话汇报、工作材料和项目数据，整理成一份“咨询公司式高信息密度”的管理层汇报 PPT。
 
 这里的“咨询公司式”指：结论先行、证据充分、结构紧凑、视觉克制，而不是复制任何咨询公司的商标、Logo 或专有模板。
 
@@ -142,7 +142,7 @@ export const CONSULTING_DECK_EXAMPLE = {
           label: "汇报范围",
           value: "菲律宾首发、印尼复用、新加坡下一站",
           detail: "本次只讲交付效率和人手，不展开预算挪移。",
-          sourceRef: "汇报背景",
+          sourceRef: "一句话汇报",
           status: "confirmed",
         },
         {
@@ -200,7 +200,7 @@ export const CONSULTING_DECK_EXAMPLE = {
           label: "本次不展开",
           value: "预算挪移先不讨论",
           detail: "避免把效率问题开成预算会。",
-          sourceRef: "汇报背景",
+          sourceRef: "一句话汇报",
           status: "confirmed",
         },
       ],

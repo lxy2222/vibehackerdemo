@@ -46,6 +46,7 @@ function joinTranscript(current: string, incoming: string) {
 
 export function VoiceTextarea({
   label,
+  hint,
   value,
   onChange,
   placeholder,
@@ -53,6 +54,7 @@ export function VoiceTextarea({
   minClassName = "min-h-32",
 }: {
   label: string;
+  hint?: string;
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -184,6 +186,7 @@ export function VoiceTextarea({
           <span className="text-xs text-[var(--olive)]">当前浏览器不支持语音，请打字</span>
         )}
       </div>
+      {hint ? <p className="text-base text-[var(--olive)]">{hint}</p> : null}
       <textarea
         className={`field ${minClassName}`}
         value={value}

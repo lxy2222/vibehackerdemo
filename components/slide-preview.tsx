@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { ConsultingSlide } from "@/components/consulting-slide";
 import { isFunnelStageFact } from "@/lib/facts/from-brief";
 import { factMap, formatFactValue, interpolate, resolveFacts } from "@/lib/presentation/facts";
+import { pad2 } from "@/lib/presentation/ppt-style";
+import { pptCssVars } from "@/lib/presentation/theme";
 import type { Fact, SlideSpec } from "@/lib/presentation/types";
 import { isConsultingLayout, LAYOUT_LABELS } from "@/lib/schemas/deck";
 
@@ -26,22 +28,45 @@ const TYPE_LABEL: Record<string, string> = {
 };
 
 const STATUS_TONE: Record<string, string> = {
-  进行中: "bg-[var(--lavender)] text-[var(--title)]",
-  有风险: "bg-[var(--cream)] text-[var(--olive)]",
-  已阻塞: "bg-[var(--error-bg)] text-[var(--error)]",
-  已完成: "bg-[#f3f3f5] text-[var(--muted)]",
+  进行中: "bg-[var(--ppt-sage)] text-[var(--ppt-ink)]",
+  有风险: "bg-[var(--ppt-lime)] text-[var(--ppt-ink)]",
+  已阻塞: "bg-[var(--ppt-ink)] text-[var(--ppt-white)]",
+  已完成: "bg-[var(--ppt-paper-alt)] text-[var(--ppt-muted)]",
 };
 
-function CoverSlide({ slide, subtitle }: { slide: SlideSpec; subtitle: string }) {
+function CoverSlide({
+  slide,
+  subtitle,
+  index,
+  total,
+}: {
+  slide: SlideSpec;
+  subtitle: string;
+  index: number;
+  total: number;
+}) {
   return (
-    <div className="flex h-full flex-col items-center justify-center px-12 py-10 text-center">
-      <p className="text-sm font-medium tracking-wide text-[var(--primary)]">工作汇报</p>
-      <h2 className="mt-3 max-w-4xl text-4xl font-semibold tracking-tight">{slide.headline}</h2>
-      <p className="mt-4 max-w-3xl text-xl text-[var(--accent)]">{slide.takeaway}</p>
-      <p className="mt-3 text-base text-[var(--olive)]">{subtitle}</p>
-      {slide.bullets.length > 0 ? (
-        <p className="mt-8 text-sm text-[var(--muted)]">{slide.bullets.join("  ·  ")}</p>
-      ) : null}
+    <div className="ppt-slide ppt-slide-cover flex h-full flex-col px-10 py-8" style={pptCssVars as CSSProperties}>
+      <div className="flex items-center gap-3">
+        <span className="h-2.5 w-2.5 bg-[var(--ppt-lime)]" />
+        <p className="text-[11px] font-medium tracking-[0.28em] text-[var(--ppt-lime)]">
+          {slide.eyebrow || "MANAGEMENT BRIEFING"}
+        </p>
+      </div>
+      <div className="flex flex-1 flex-col justify-center">
+        <h2 className="max-w-4xl text-[2.45rem] font-semibold leading-[1.12] tracking-tight text-[var(--ppt-white)]">
+          {slide.headline}
+        </h2>
+        <div className="mt-6 h-1 w-16 bg-[var(--ppt-lime)]" />
+        <p className="mt-5 max-w-3xl text-lg text-[var(--ppt-sage)]">{slide.takeaway}</p>
+        <p className="mt-2 text-sm text-[var(--ppt-stone)]">{subtitle}</p>
+      </div>
+      <div className="flex items-end justify-between pt-6 text-[11px] tracking-[0.16em] text-[var(--ppt-stone)]">
+        <p>{slide.bullets.join("  ·  ")}</p>
+        <p>
+          {pad2(index + 1)} / {pad2(total)}
+        </p>
+      </div>
     </div>
   );
 }
@@ -59,7 +84,7 @@ function FunnelSlide({
   return (
     <ContentFrame slide={slide} facts={facts}>
       {stages.length === 0 ? (
-        <p className="py-16 text-center text-[var(--muted)]">还没有漏斗数字</p>
+        <p className="py-16 text-center text-[var(--ppt-muted)]">还没有漏斗数字</p>
       ) : (
         <div className="flex h-full flex-col justify-center gap-3 px-2">
           {stages.map((fact, index) => {
@@ -68,10 +93,11 @@ function FunnelSlide({
             return (
               <div
                 key={fact.id}
-                className="mx-auto flex h-12 items-center justify-center rounded-lg text-sm font-medium text-white"
+                className="mx-auto flex h-12 items-center justify-center text-sm font-medium"
                 style={{
                   width: `${width}%`,
-                  background: index === stages.length - 1 ? "var(--accent)" : "var(--primary)",
+                  background: index === stages.length - 1 ? "var(--ppt-ink)" : index === 0 ? "var(--ppt-lime)" : "var(--ppt-sage)",
+                  color: index === stages.length - 1 ? "var(--ppt-white)" : "var(--ppt-ink)",
                 }}
               >
                 {fact.label} {formatFactValue(fact)}
@@ -79,7 +105,7 @@ function FunnelSlide({
             );
           })}
           {slide.bullets.length > 0 ? (
-            <ul className="mt-2 space-y-1 text-[13px] text-[var(--olive)]">
+            <ul className="mt-2 space-y-1 text-[13px] text-[var(--ppt-body)]">
               {slide.bullets.map((bullet, index) => (
                 <li key={index}>{interpolate(bullet, facts)}</li>
               ))}
@@ -108,28 +134,28 @@ function ProgressSlide({
   return (
     <ContentFrame slide={slide} facts={facts}>
       {rows.length === 0 ? (
-        <p className="py-16 text-center text-[var(--muted)]">还没有进度事项</p>
+        <p className="py-16 text-center text-[var(--ppt-muted)]">还没有进度事项</p>
       ) : (
         <table className="w-full text-left text-[13px]">
           <thead>
-            <tr className="text-[var(--primary)]">
-              <th className="pb-2 font-medium">事项</th>
-              <th className="pb-2 font-medium">状态</th>
-              <th className="pb-2 font-medium">负责人</th>
-              <th className="pb-2 font-medium">说明</th>
+            <tr className="text-[var(--ppt-muted)]">
+              <th className="pb-2 font-medium tracking-[0.12em]">事项</th>
+              <th className="pb-2 font-medium tracking-[0.12em]">状态</th>
+              <th className="pb-2 font-medium tracking-[0.12em]">负责人</th>
+              <th className="pb-2 font-medium tracking-[0.12em]">说明</th>
             </tr>
           </thead>
           <tbody>
             {rows.map((row, index) => (
-              <tr key={index} className="border-t border-[var(--line)]">
+              <tr key={index} className="border-t border-[var(--ppt-line)]">
                 <td className="py-2 pr-3 font-medium">{row.name}</td>
                 <td className="py-2 pr-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_TONE[row.status] ?? "bg-[#eef2f3]"}`}>
+                  <span className={`px-2 py-0.5 text-xs ${STATUS_TONE[row.status] ?? "bg-[var(--ppt-paper-alt)]"}`}>
                     {row.status}
                   </span>
                 </td>
                 <td className="py-2 pr-3">{row.owner}</td>
-                <td className="py-2 text-[var(--olive)]">{row.note}</td>
+                <td className="py-2 text-[var(--ppt-body)]">{row.note}</td>
               </tr>
             ))}
           </tbody>
@@ -152,13 +178,13 @@ function BulletSlide({
       <ul
         className={
           dense
-            ? "space-y-1 text-[13px] leading-5 text-[var(--title)]"
-            : "space-y-1.5 text-[14px] leading-5 text-[var(--title)]"
+            ? "space-y-1 text-[13px] leading-5 text-[var(--ppt-ink)]"
+            : "space-y-1.5 text-[14px] leading-5 text-[var(--ppt-ink)]"
         }
       >
         {slide.bullets.map((bullet, index) => (
           <li key={index} className="flex gap-2">
-            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 bg-[var(--ppt-lime)]" />
             <span>{interpolate(bullet, facts)}</span>
           </li>
         ))}
@@ -185,15 +211,15 @@ function ActionSlide({
     <ContentFrame slide={slide} facts={facts}>
       <table className="w-full text-left text-[13px]">
         <thead>
-          <tr className="bg-[var(--primary)] text-white">
-            <th className="px-3 py-2 font-medium">行动</th>
-            <th className="px-3 py-2 font-medium">负责人</th>
-            <th className="px-3 py-2 font-medium">截止</th>
+          <tr className="bg-[var(--ppt-ink)] text-[var(--ppt-white)]">
+            <th className="px-3 py-2 font-medium tracking-[0.08em]">行动</th>
+            <th className="px-3 py-2 font-medium tracking-[0.08em]">负责人</th>
+            <th className="px-3 py-2 font-medium tracking-[0.08em]">截止</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row, index) => (
-            <tr key={index} className="border-b border-[var(--line)]">
+            <tr key={index} className="border-b border-[var(--ppt-line)]">
               <td className="px-3 py-2">{row.action}</td>
               <td className="px-3 py-2">{row.owner}</td>
               <td className="px-3 py-2">{row.due}</td>
@@ -217,14 +243,15 @@ function ContentFrame({
   compact?: boolean;
 }) {
   return (
-    <div className={`flex h-full flex-col px-8 ${compact ? "py-5" : "py-6"}`}>
-      <h2 className="text-xl font-semibold">{interpolate(slide.headline, facts)}</h2>
+    <div
+      className={`ppt-slide flex h-full flex-col px-8 ${compact ? "py-5" : "py-6"}`}
+      style={pptCssVars as CSSProperties}
+    >
+      <div className="h-px bg-[var(--ppt-line)]" />
+      <h2 className="mt-3 text-xl font-semibold tracking-tight">{interpolate(slide.headline, facts)}</h2>
       {slide.takeaway ? (
-        <p
-          className={`rounded-lg bg-[var(--lavender)] px-3 font-medium text-[var(--title)] ${
-            compact ? "mt-2 py-1.5 text-[13px]" : "mt-3 py-2 text-sm"
-          }`}
-        >
+        <p className={`font-medium text-[var(--ppt-ink)] ${compact ? "mt-2 text-[13px]" : "mt-3 text-sm"}`}>
+          <span className="mr-2 text-[var(--ppt-lime)]">→</span>
           {interpolate(slide.takeaway, facts)}
         </p>
       ) : null}
@@ -250,9 +277,9 @@ export function SlidePreview({
   const layoutId = slide.layoutId ?? (isConsultingLayout(slide.type) && (slide.blocks?.length ?? 0) > 0 ? slide.type : null);
   let body: ReactNode;
   if (slide.type === "cover") {
-    body = <CoverSlide slide={slide} subtitle={subtitle} />;
+    body = <CoverSlide slide={slide} subtitle={subtitle} index={index} total={total} />;
   } else if (layoutId) {
-    body = <ConsultingSlide slide={slide} layoutId={layoutId} />;
+    body = <ConsultingSlide slide={slide} layoutId={layoutId} index={index} total={total} />;
   } else if (slide.type === "funnel") {
     body = <FunnelSlide slide={slide} facts={map} />;
   } else if (slide.type === "progress") {
@@ -268,10 +295,7 @@ export function SlidePreview({
       <p className="text-xs text-[var(--muted)]">
         {index + 1}/{total} · {TYPE_LABEL[slide.type] ?? slide.type}
       </p>
-      <div className="slide-frame">
-        <div className="slide-accent" />
-        {body}
-      </div>
+      <div className="slide-frame">{body}</div>
     </article>
   );
 }

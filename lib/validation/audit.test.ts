@@ -73,7 +73,7 @@ test("完整 demo 不阻塞，缺量化只是建议", () => {
   assert.equal(report.status, "ready");
   assert.equal(report.blockers.length, 0);
   assert.match(report.suggestions.join("\n"), /缺量化/);
-  assert.match(report.deliveryMessage, /可以交/);
+  assert.match(report.deliveryMessage, /先把进展讲清楚/);
 });
 
 test("点名转化且没有数字会阻塞", () => {

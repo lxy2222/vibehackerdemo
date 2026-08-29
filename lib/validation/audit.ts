@@ -129,15 +129,14 @@ export function runCodeAudit(input: CodeAuditInput): AuditReport {
 export function fallbackDeliveryMessage(
   input: CodeAuditInput,
   blockers: string[],
-  suggestions: string[],
+  _suggestions: string[],
 ) {
   const question = input.analysis?.leaderQuestion || "本次要同步的问题";
   const conclusion = input.analysis?.coreConclusion || "结论仍待确认";
   if (blockers.length > 0) {
-    return `这份稿还不能交。领导要判断的是：${question}。当前阻塞：${blockers[0]}`;
+    return `这份稿还不能交。${question}。当前阻塞：${blockers[0]}`;
   }
-  const extra = suggestions[0] ? `补充：${suggestions[0]}` : "材料里的数字都可追溯，没有编造。";
-  return `这份稿可以交。领导要判断的是：${question}。结论：${conclusion}。${extra}`;
+  return conclusion;
 }
 
 export function mergeAudits(code: AuditReport, semantic: Partial<AuditReport>): AuditReport {
