@@ -334,7 +334,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <button className="btn-primary" type="button" disabled={analyzing || saving} onClick={goPreview}>
-          {saving ? "正在生成预览…" : "确认并预览"}
+          {saving ? "正在生成汇报…" : "确认并预览"}
         </button>
       </div>
     </div>

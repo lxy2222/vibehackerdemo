@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx --test lib/validation/audit.test.ts",
+    "test": "tsx --test lib/validation/audit.test.ts lib/presentation/from-consulting.test.ts",
     "generate:demo": "tsx scripts/generate-demo.ts"
   },
   "dependencies": {

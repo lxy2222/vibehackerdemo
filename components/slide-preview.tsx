@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
+import { ConsultingSlide } from "@/components/consulting-slide";
 import { isFunnelStageFact } from "@/lib/facts/from-brief";
 import { factMap, formatFactValue, interpolate, resolveFacts } from "@/lib/presentation/facts";
 import type { Fact, SlideSpec } from "@/lib/presentation/types";
+import { isConsultingLayout, LAYOUT_LABELS } from "@/lib/schemas/deck";
 
 const TYPE_LABEL: Record<string, string> = {
   cover: "封面",
@@ -14,7 +16,13 @@ const TYPE_LABEL: Record<string, string> = {
   action_plan: "行动计划",
   kpi_overview: "指标总览",
   trend: "趋势",
-  comparison: "对比",
+  executive_summary_split: LAYOUT_LABELS.executive_summary_split,
+  metric_grid: LAYOUT_LABELS.metric_grid,
+  chart_plus_insight: LAYOUT_LABELS.chart_plus_insight,
+  comparison: LAYOUT_LABELS.comparison,
+  timeline_risk: LAYOUT_LABELS.timeline_risk,
+  decision_actions: LAYOUT_LABELS.decision_actions,
+  progress_evidence: LAYOUT_LABELS.progress_evidence,
 };
 
 const STATUS_TONE: Record<string, string> = {
@@ -239,9 +247,12 @@ export function SlidePreview({
   total: number;
 }) {
   const map = factMap(facts);
+  const layoutId = slide.layoutId ?? (isConsultingLayout(slide.type) && (slide.blocks?.length ?? 0) > 0 ? slide.type : null);
   let body: ReactNode;
   if (slide.type === "cover") {
     body = <CoverSlide slide={slide} subtitle={subtitle} />;
+  } else if (layoutId) {
+    body = <ConsultingSlide slide={slide} layoutId={layoutId} />;
   } else if (slide.type === "funnel") {
     body = <FunnelSlide slide={slide} facts={map} />;
   } else if (slide.type === "progress") {

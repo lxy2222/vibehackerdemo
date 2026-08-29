@@ -33,9 +33,11 @@ export async function auditProject(input: CodeAuditInput): Promise<AuditReport> 
                     title: input.deck.title,
                     slides: input.deck.slides.map((slide) => ({
                       type: slide.type,
+                      layoutId: slide.layoutId ?? slide.type,
                       headline: slide.headline,
-                      takeaway: slide.takeaway,
+                      takeaway: slide.takeaway || slide.managementImplication,
                       bullets: slide.bullets,
+                      blocks: slide.blocks,
                     })),
                   }
                 : null,

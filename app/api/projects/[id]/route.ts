@@ -2,6 +2,7 @@ import { getProjectDTO, saveAnalysis } from "@/lib/projects/service";
 import { errorMessage, jsonError, jsonOk } from "@/lib/http/respond";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function GET(
   _request: Request,

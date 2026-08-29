@@ -31,6 +31,12 @@ const DEFAULT_HEADLINES: Record<SlideType, string> = {
   kpi_overview: "关键指标总览",
   trend: "趋势",
   comparison: "对比",
+  executive_summary_split: "背景与核心发现",
+  metric_grid: "关键指标",
+  chart_plus_insight: "数据与判断",
+  timeline_risk: "节点与风险",
+  decision_actions: "下一步与拍板",
+  progress_evidence: "进展与证据",
 };
 
 const NAKED_NUMBER_RE = /\d+(?:\.\d+)?%|\d+(?:\.\d+)?\s*(?:亿|万)?元|\d{2,}(?:\.\d+)?\s*万/g;

@@ -85,7 +85,7 @@ export async function analyzeNarrative(input: {
 - 不要编造材料里没有的数字、人名、国家或结论。
 - 材料不足、口径对不上、可能被追问的事项，一律写成风险点，写入 risks。不要使用「缺口」这个词。
 ${intentRule}
-- keyFindings、risks、nextActions、missingInformation 尽量从材料抽出能上台的要点，各最多 8 条。每条写完整短句，不超过 60 个汉字，不要为了短而砍掉关键信息。面向 5 分钟、固定两页 PPT：封面只放标题和核心问题，第二页要把发现、风险、下一步和拍板尽量塞满。missingInformation 只作内部字段，内容也按风险点来写。
+- keyFindings、risks、nextActions、missingInformation 尽量从材料抽出能上台的要点，各最多 8 条。每条写完整短句，不超过 60 个汉字，不要为了短而砍掉关键信息。missingInformation 只作内部字段，内容也按风险点来写。
 - decisionAsk 没有拍板事项时返回空字符串。
 - excludedDetails 写下不该上台的细节，没有则空数组。
 示例结构：${JSON.stringify(EXAMPLE)}`,

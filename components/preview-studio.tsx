@@ -131,7 +131,7 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
           className="field min-h-24"
           value={feedback}
           onChange={(event) => setFeedback(event.target.value)}
-          placeholder="例如：只要两页、封面标题改成跨国家复用、结论再锋利一点"
+          placeholder="例如：只要两页、封面标题改成跨国家复用、结论再锋利一点、版式改成指标卡片"
         />
         <button className="btn-primary" type="button" disabled={pending || !feedback.trim()} onClick={revise}>
           {pending ? "正在按意见重生成…" : "按意见重生成"}
@@ -143,15 +143,15 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
         <p className="text-sm text-[var(--olive)]">
           {audit?.status === "needs_revision"
             ? "还有阻塞项。可以先改主线或按意见重生成，仍要导出也可以。"
-            : "指定 1–4 页后生成可编辑 PPTX。网页预览已经可以开会用。"}
+            : "指定页数后生成可编辑 PPTX。网页预览已经可以开会用。"}
         </p>
         <label className="block max-w-40 space-y-2 text-sm">
-          <span className="font-medium">页数（1–4）</span>
+          <span className="font-medium">页数（1–{MAX_PAGE_COUNT}）</span>
           <input
             className="field"
             type="number"
             min={1}
-            max={4}
+            max={MAX_PAGE_COUNT}
             value={pageCount}
             onChange={(event) => {
               setPageCountTouched(true);

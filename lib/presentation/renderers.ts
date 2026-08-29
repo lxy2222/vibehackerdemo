@@ -12,6 +12,8 @@ import {
 } from "@/lib/presentation/facts";
 import { theme } from "@/lib/presentation/theme";
 import { isFunnelStageFact } from "@/lib/facts/from-brief";
+import { isConsultingLayout, type LayoutId } from "@/lib/schemas/deck";
+import { renderConsultingSlide } from "@/lib/presentation/consulting-renderers";
 import type { DeckSpec, Fact, SlideSpec } from "@/lib/presentation/types";
 
 type Pres = InstanceType<typeof PptxGenJS>;
@@ -548,6 +550,15 @@ export function renderDeck(pres: Pres, spec: DeckSpec, facts: Fact[]) {
 
   spec.slides.forEach((slide, index) => {
     const page = index + 1;
+    const layoutId: LayoutId | null =
+      slide.type === "cover"
+        ? null
+        : slide.layoutId ??
+          (isConsultingLayout(slide.type) && (slide.blocks?.length ?? 0) > 0 ? slide.type : null);
+    if (layoutId) {
+      renderConsultingSlide(pres, slide, layoutId, page, total);
+      return;
+    }
     switch (slide.type) {
       case "cover":
         renderCover(pres, slide, spec);

@@ -3,15 +3,16 @@ import {
   COVER_SECONDS,
   DEFAULT_PAGE_COUNT,
   MAX_BODY_BULLETS,
+  MAX_HEADLINE_CHARS,
   SLIDE_SECONDS,
   clampPageCount,
   durationForIntent,
 } from "@/lib/presentation/limits";
 import type { DeckSpec, SlideSpec } from "@/lib/presentation/types";
 
-function clipHeadline(text: string) {
+function clipHeadline(text: string, max = 24) {
   const chars = [...text.trim()];
-  return chars.length <= 24 ? text.trim() : chars.slice(0, 24).join("");
+  return chars.length <= max ? text.trim() : chars.slice(0, max).join("");
 }
 
 function clean(items: string[]) {
@@ -62,9 +63,12 @@ export function deckFromAnalysis(input: {
     slide(
       {
         type: "cover",
+        eyebrow: "MANAGEMENT BRIEFING",
         headline: title,
         takeaway: analysis.leaderQuestion,
         bullets: [`${INTENT_LABELS[analysis.intent]} · ${durationMinutes} 分钟`],
+        blocks: [],
+        managementImplication: "",
         factRefs: [],
         speakerNotes: "",
         estimatedSeconds: COVER_SECONDS,
@@ -73,12 +77,43 @@ export function deckFromAnalysis(input: {
     ),
     slide(
       {
-        type: "executive_summary",
-        headline: labels.summary,
-        takeaway: analysis.coreConclusion,
+        type: "progress_evidence",
+        layoutId: "progress_evidence",
+        eyebrow: "PROJECT UPDATE",
+        headline: clipHeadline(analysis.coreConclusion || labels.summary, MAX_HEADLINE_CHARS),
+        takeaway: analysis.decisionAsk ? `待拍板：${analysis.decisionAsk}` : analysis.leaderQuestion,
         bullets: bodyBullets,
+        blocks: [
+          ...analysis.keyFindings.slice(0, 2).map((item) => ({
+            kind: "text" as const,
+            label: "发现",
+            value: item,
+            detail: "",
+            sourceRef: "已确认主线",
+            status: "confirmed" as const,
+          })),
+          ...analysis.risks.slice(0, 1).map((item) => ({
+            kind: "risk" as const,
+            label: "风险",
+            value: item,
+            detail: "",
+            sourceRef: "已确认主线",
+            status: "confirmed" as const,
+          })),
+          ...analysis.nextActions.slice(0, 1).map((item) => ({
+            kind: "action" as const,
+            label: "下一步",
+            value: item,
+            detail: analysis.decisionAsk ?? "",
+            sourceRef: "已确认主线",
+            status: "confirmed" as const,
+          })),
+        ].slice(0, 4),
+        managementImplication: analysis.decisionAsk
+          ? `需要管理层决定：${analysis.decisionAsk}`
+          : analysis.leaderQuestion,
         factRefs: [],
-        speakerNotes: "第二页尽量讲全：结论、发现、风险、下一步和拍板。数字只用来自材料的表述。",
+        speakerNotes: "按主线讲结论、证据、风险和下一步，不补充材料里没有的数字。",
       },
       1,
     ),
@@ -96,9 +131,13 @@ export function stampDeckDuration(deck: DeckSpec, intentLabel: string, durationM
   return {
     ...deck,
     subtitle: label,
-    slides: deck.slides.map((slide) =>
-      slide.type === "cover" ? { ...slide, bullets: [label] } : slide,
-    ),
+    slides: deck.slides.map((slide) => {
+      if (slide.type !== "cover") {
+        return slide;
+      }
+      const extras = slide.bullets.filter((item) => item.trim() && item !== label);
+      return { ...slide, bullets: extras.length > 0 ? [...extras, label] : [label] };
+    }),
   };
 }
 
@@ -114,7 +153,6 @@ export function fitDeckToPageCount(deck: DeckSpec, pageCount: number): DeckSpec 
 
   const cover = slides[0];
   const rest = slides.slice(1);
-  const mergedBullets = rest.flatMap((item) => item.bullets).slice(0, MAX_BODY_BULLETS);
 
   if (n === 1) {
     return {
@@ -124,26 +162,21 @@ export function fitDeckToPageCount(deck: DeckSpec, pageCount: number): DeckSpec 
           ...cover,
           type: "cover",
           takeaway: cover.takeaway || rest[0]?.takeaway || "",
-          bullets: mergedBullets,
           estimatedSeconds: COVER_SECONDS,
         },
       ],
     };
   }
 
+  const kept =
+    rest.length <= n - 1
+      ? rest
+      : n === 2
+        ? [rest[0]]
+        : [...rest.slice(0, n - 2), rest[rest.length - 1]];
+
   return {
     ...deck,
-    slides: [
-      cover,
-      {
-        ...(rest[0] ?? cover),
-        id: "s2",
-        type: rest[0]?.type ?? "executive_summary",
-        takeaway: rest[0]?.takeaway || cover.takeaway,
-        bullets: mergedBullets,
-        estimatedSeconds: SLIDE_SECONDS,
-      },
-      ...rest.slice(1, n - 1),
-    ].slice(0, n).map((item, index) => ({ ...item, id: `s${index + 1}` })),
+    slides: [cover, ...kept].slice(0, n).map((item, index) => ({ ...item, id: `s${index + 1}` })),
   };
 }

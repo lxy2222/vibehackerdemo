@@ -32,7 +32,14 @@ function sourceText(input: CodeAuditInput) {
 
 function deckText(deck: DeckSpec) {
   return deck.slides
-    .flatMap((slide) => [slide.headline, slide.takeaway, ...slide.bullets, slide.speakerNotes])
+    .flatMap((slide) => [
+      slide.headline,
+      slide.takeaway,
+      slide.managementImplication,
+      ...slide.bullets,
+      ...(slide.blocks ?? []).flatMap((block) => [block.label, block.value, block.detail]),
+      slide.speakerNotes,
+    ])
     .join("\n");
 }
 
@@ -60,8 +67,8 @@ export function runCodeAudit(input: CodeAuditInput): AuditReport {
     if (!input.deck.slides.some((slide) => slide.type === "cover")) {
       blockers.push("缺少封面页。");
     }
-    if (input.deck.slides.length < 3) {
-      blockers.push(`页数过少（${input.deck.slides.length} 页），结论、风险和下一步讲不完。`);
+    if (input.deck.slides.length < 2) {
+      blockers.push(`页数过少（${input.deck.slides.length} 页），至少需要封面和一页内容。`);
     }
     if (input.deck.slides.length > 12) {
       blockers.push(`页数过多（${input.deck.slides.length} 页），超过可讲解范围。`);

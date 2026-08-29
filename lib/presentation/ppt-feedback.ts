@@ -4,11 +4,11 @@ import { MAX_PAGE_COUNT, clampPageCount } from "@/lib/presentation/limits";
 export const PPT_NOTE_PREFIX = "【PPT】";
 
 const PPT_PATTERN =
-  /ppt|pptx|幻灯片|页数|封面|标题居中|居中|排版|版式|合并|少一页|只要\s*[1-4一二两三四五]\s*页|[1-4一二两三四五]页/i;
+  /ppt|pptx|幻灯片|页数|封面|标题居中|居中|排版|版式|合并|少一页|只要\s*[1-8一二两三四五六七八]\s*页|[1-8一二两三四五六七八]页/i;
 
 const CONTENT_PATTERN = /结论|风险|发现|主线|行动|拍板|问题|目的|材料|背景|改写|锋利|写轻|补一句/;
 
-const PAGE_COUNT_PATTERN = /(?:只要|改成|改为|换成|做成|压缩到|控制在)?\s*([1-4一二两三四五])\s*页/;
+const PAGE_COUNT_PATTERN = /(?:只要|改成|改为|换成|做成|压缩到|控制在)?\s*([1-8一二两三四五六七八])\s*页/;
 
 const COVER_TITLE_PATTERN = /封面标题(?:改成|改为|换成|用)\s*[「「""']?([^」」""'\n]{2,24})/;
 
@@ -17,12 +17,19 @@ const CN_PAGES: Record<string, number> = {
   "2": 2,
   "3": 3,
   "4": 4,
+  "5": 5,
+  "6": 6,
+  "7": 7,
+  "8": 8,
   一: 1,
   二: 2,
   两: 2,
   三: 3,
   四: 4,
-  五: 4,
+  五: 5,
+  六: 6,
+  七: 7,
+  八: 8,
 };
 
 export function isPptNote(text: string) {

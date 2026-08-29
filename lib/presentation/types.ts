@@ -10,38 +10,11 @@ export type Fact = {
   calculation?: string;
 };
 
-export type ChartSpec = {
-  type: "bar" | "line" | "bar_horizontal";
-  factRefs: string[];
-};
-
-export type SlideType =
-  | "cover"
-  | "executive_summary"
-  | "funnel"
-  | "progress"
-  | "tech_focus"
-  | "diagnosis"
-  | "recommendations"
-  | "action_plan"
-  | "kpi_overview"
-  | "trend"
-  | "comparison";
-
-export type SlideSpec = {
-  id: string;
-  type: SlideType;
-  headline: string;
-  takeaway: string;
-  bullets: string[];
-  factRefs: string[];
-  chart?: ChartSpec;
-  speakerNotes: string;
-  estimatedSeconds: number;
-};
-
-export type DeckSpec = {
-  title: string;
-  subtitle: string;
-  slides: SlideSpec[];
-};
+export type {
+  ChartSpec,
+  DeckSpec,
+  LayoutId,
+  SlideBlock,
+  SlideSpec,
+  SlideType,
+} from "@/lib/schemas/deck";

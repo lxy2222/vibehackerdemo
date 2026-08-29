@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import { analyzeNarrative } from "@/lib/llm/analyze-narrative";
+import { generateConsultingDeck } from "@/lib/llm/deck";
 import { reviseDeckFromFeedback } from "@/lib/llm/revise-deck";
 import { generatePptxBuffer } from "@/lib/presentation/generate-pptx";
 import { deckFromAnalysis, fitDeckToPageCount, stampDeckDuration } from "@/lib/presentation/from-analysis";
@@ -70,16 +71,8 @@ export function toDTO(project: ProjectRecord): ProjectDTO {
   const durationMinutes = analysis
     ? durationForIntent(analysis.intent, project.durationMinutes)
     : project.durationMinutes || DEFAULT_DURATION_MINUTES;
-  const derived = analysis
-    ? deckFromAnalysis({
-        reportBackground: project.leaderRequest,
-        durationMinutes,
-        analysis,
-      })
-    : null;
   const stored = parseJson<DeckSpec | null>(project.deckSpec, null);
-  const useStoredPpt = Boolean(analysis && pptNotesFrom(analysis.excludedDetails).length > 0 && stored?.slides?.length);
-  const rawDeck = useStoredPpt ? stored : derived ?? stored;
+  const rawDeck = stored?.slides?.length ? stored : null;
   const deck = rawDeck
     ? stampDeckDuration(rawDeck, analysis ? INTENT_LABELS[analysis.intent] : "工作汇报", durationMinutes)
     : null;
@@ -115,10 +108,33 @@ function requireAnalysis(project: ProjectRecord): ReportAnalysis {
   return analysis;
 }
 
+async function buildConsultingDeck(input: {
+  reportBackground: string;
+  materials: string;
+  durationMinutes: number;
+  analysis: ReportAnalysis;
+}): Promise<DeckSpec> {
+  try {
+    const deck = await generateConsultingDeck(input);
+    return stampDeckDuration(deck, INTENT_LABELS[input.analysis.intent], input.durationMinutes);
+  } catch {
+    return stampDeckDuration(
+      deckFromAnalysis({
+        reportBackground: input.reportBackground,
+        durationMinutes: input.durationMinutes,
+        analysis: input.analysis,
+      }),
+      INTENT_LABELS[input.analysis.intent],
+      input.durationMinutes,
+    );
+  }
+}
+
 async function runAnalysis(
   project: ProjectRecord,
   current?: ReportAnalysis,
   lockedIntent?: ReportAnalysis["intent"],
+  options?: { generateDeck?: boolean },
 ) {
   const preservedPpt = pptNotesFrom(current?.excludedDetails ?? []);
   const analysis = await analyzeNarrative({
@@ -132,16 +148,19 @@ async function runAnalysis(
   });
   analysis.excludedDetails = [...preservedPpt, ...withoutPptNotes(analysis.excludedDetails)];
   const durationMinutes = durationForIntent(analysis.intent, project.durationMinutes);
-  const deck = deckFromAnalysis({
-    reportBackground: project.leaderRequest,
-    durationMinutes,
-    analysis,
-  });
+  const deck = options?.generateDeck
+    ? await buildConsultingDeck({
+        reportBackground: project.leaderRequest,
+        materials: project.notesChunks ?? "",
+        durationMinutes,
+        analysis,
+      })
+    : null;
   updateProjectRow(project.id, {
     status: "ready",
     durationMinutes,
     analysis: JSON.stringify(analysis),
-    deckSpec: JSON.stringify(deck),
+    deckSpec: deck ? JSON.stringify(deck) : null,
     facts: JSON.stringify([]),
     audit: null,
     errorMessage: null,
@@ -173,6 +192,8 @@ async function applyPptRevision(projectId: string, feedback: string) {
       analysis,
       current: deck,
       durationMinutes,
+      reportBackground: project.leaderRequest,
+      materials: project.notesChunks ?? "",
     });
   } else {
     deck = ensureCover(deck);
@@ -294,8 +315,9 @@ export async function saveAnalysis(
     throw new Error("请填写最初的汇报背景");
   }
   const durationMinutes = durationForIntent(analysis.intent, project.durationMinutes);
-  const deck = deckFromAnalysis({
+  const deck = await buildConsultingDeck({
     reportBackground,
+    materials,
     durationMinutes,
     analysis,
   });
@@ -331,10 +353,15 @@ export async function reviseProject(projectId: string, feedback: string): Promis
 
   try {
     if (content) {
-      await runAnalysis(getProjectRow(projectId)!, {
-        ...current,
-        excludedDetails: [...withoutPptNotes(current.excludedDetails), `用户意见：${trimmed}`],
-      });
+      await runAnalysis(
+        getProjectRow(projectId)!,
+        {
+          ...current,
+          excludedDetails: [...withoutPptNotes(current.excludedDetails), `用户意见：${trimmed}`],
+        },
+        undefined,
+        { generateDeck: !ppt },
+      );
     }
     if (ppt) {
       await applyPptRevision(projectId, trimmed);
