@@ -6,14 +6,14 @@ import { demandedMetrics, runCodeAudit } from "./audit";
 
 const deck = {
   title: "测试汇报",
-  subtitle: "10 分钟",
+  subtitle: "5 分钟",
   slides: [
     {
       id: "s1",
       type: "cover" as const,
       headline: "测试汇报",
       takeaway: "领导要判断什么",
-      bullets: ["进度汇报 · 10 分钟"],
+      bullets: ["进度汇报 · 5 分钟"],
       factRefs: [],
       speakerNotes: "",
       estimatedSeconds: 20,

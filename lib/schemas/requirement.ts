@@ -4,7 +4,7 @@ export const requirementSpecSchema = z.object({
   goal: z.string().nullable().catch(null),
   audience: z.string().nullable().catch(null),
   deadline: z.string().nullable().catch(null),
-  durationMinutes: z.coerce.number().int().min(1).max(90).catch(10),
+  durationMinutes: z.coerce.number().int().min(1).max(90).catch(5),
   reportType: z.literal("project_review").catch("project_review"),
   focusMetrics: z.array(z.string()).catch([]),
   expectedDecisions: z.array(z.string()).catch([]),

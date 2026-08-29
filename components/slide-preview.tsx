@@ -20,19 +20,19 @@ const TYPE_LABEL: Record<string, string> = {
 const STATUS_TONE: Record<string, string> = {
   进行中: "bg-[var(--lavender)] text-[var(--title)]",
   有风险: "bg-[var(--cream)] text-[var(--olive)]",
-  已阻塞: "bg-[color-mix(in_srgb,var(--cta)_22%,white)] text-[var(--cta)]",
+  已阻塞: "bg-[var(--error-bg)] text-[var(--error)]",
   已完成: "bg-[#f3f3f5] text-[var(--muted)]",
 };
 
 function CoverSlide({ slide, subtitle }: { slide: SlideSpec; subtitle: string }) {
   return (
-    <div className="flex h-full flex-col justify-center px-12 py-10">
+    <div className="flex h-full flex-col items-center justify-center px-12 py-10 text-center">
       <p className="text-sm font-medium tracking-wide text-[var(--primary)]">工作汇报</p>
-      <h2 className="mt-3 text-4xl font-semibold tracking-tight">{slide.headline}</h2>
-      <p className="mt-4 text-xl text-[var(--accent)]">{slide.takeaway}</p>
+      <h2 className="mt-3 max-w-4xl text-4xl font-semibold tracking-tight">{slide.headline}</h2>
+      <p className="mt-4 max-w-3xl text-xl text-[var(--accent)]">{slide.takeaway}</p>
       <p className="mt-3 text-base text-[var(--olive)]">{subtitle}</p>
       {slide.bullets.length > 0 ? (
-        <p className="mt-auto text-sm text-[var(--muted)]">{slide.bullets.join("  ·  ")}</p>
+        <p className="mt-8 text-sm text-[var(--muted)]">{slide.bullets.join("  ·  ")}</p>
       ) : null}
     </div>
   );
@@ -72,8 +72,8 @@ function FunnelSlide({
           })}
           {slide.bullets.length > 0 ? (
             <ul className="mt-2 space-y-1 text-[13px] text-[var(--olive)]">
-              {slide.bullets.map((bullet) => (
-                <li key={bullet}>{interpolate(bullet, facts)}</li>
+              {slide.bullets.map((bullet, index) => (
+                <li key={index}>{interpolate(bullet, facts)}</li>
               ))}
             </ul>
           ) : null}
@@ -112,8 +112,8 @@ function ProgressSlide({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.name} className="border-t border-[var(--line)]">
+            {rows.map((row, index) => (
+              <tr key={index} className="border-t border-[var(--line)]">
                 <td className="py-2 pr-3 font-medium">{row.name}</td>
                 <td className="py-2 pr-3">
                   <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_TONE[row.status] ?? "bg-[#eef2f3]"}`}>
@@ -138,12 +138,19 @@ function BulletSlide({
   slide: SlideSpec;
   facts: Map<string, Fact>;
 }) {
+  const dense = slide.bullets.length > 6;
   return (
-    <ContentFrame slide={slide} facts={facts}>
-      <ul className="space-y-3 text-[15px] leading-6 text-[var(--title)]">
-        {slide.bullets.map((bullet) => (
-          <li key={bullet} className="flex gap-2">
-            <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />
+    <ContentFrame slide={slide} facts={facts} compact>
+      <ul
+        className={
+          dense
+            ? "space-y-1 text-[13px] leading-5 text-[var(--title)]"
+            : "space-y-1.5 text-[14px] leading-5 text-[var(--title)]"
+        }
+      >
+        {slide.bullets.map((bullet, index) => (
+          <li key={index} className="flex gap-2">
+            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--primary)]" />
             <span>{interpolate(bullet, facts)}</span>
           </li>
         ))}
@@ -177,8 +184,8 @@ function ActionSlide({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.action} className="border-b border-[var(--line)]">
+          {rows.map((row, index) => (
+            <tr key={index} className="border-b border-[var(--line)]">
               <td className="px-3 py-2">{row.action}</td>
               <td className="px-3 py-2">{row.owner}</td>
               <td className="px-3 py-2">{row.due}</td>
@@ -194,20 +201,26 @@ function ContentFrame({
   slide,
   facts,
   children,
+  compact = false,
 }: {
   slide: SlideSpec;
   facts: Map<string, Fact>;
   children: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <div className="flex h-full flex-col px-8 py-6">
+    <div className={`flex h-full flex-col px-8 ${compact ? "py-5" : "py-6"}`}>
       <h2 className="text-xl font-semibold">{interpolate(slide.headline, facts)}</h2>
       {slide.takeaway ? (
-        <p className="mt-3 rounded-lg bg-[var(--lavender)] px-3 py-2 text-sm font-medium text-[var(--title)]">
+        <p
+          className={`rounded-lg bg-[var(--lavender)] px-3 font-medium text-[var(--title)] ${
+            compact ? "mt-2 py-1.5 text-[13px]" : "mt-3 py-2 text-sm"
+          }`}
+        >
           {interpolate(slide.takeaway, facts)}
         </p>
       ) : null}
-      <div className="mt-4 min-h-0 flex-1 overflow-hidden">{children}</div>
+      <div className={`min-h-0 flex-1 overflow-hidden ${compact ? "mt-2" : "mt-4"}`}>{children}</div>
     </div>
   );
 }

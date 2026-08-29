@@ -1,14 +1,25 @@
 import fs from "node:fs/promises";
 import { analyzeNarrative } from "@/lib/llm/analyze-narrative";
+import { reviseDeckFromFeedback } from "@/lib/llm/revise-deck";
 import { generatePptxBuffer } from "@/lib/presentation/generate-pptx";
-import { deckFromAnalysis } from "@/lib/presentation/from-analysis";
+import { deckFromAnalysis, fitDeckToPageCount, stampDeckDuration } from "@/lib/presentation/from-analysis";
+import { INTENT_LABELS, REPORT_INTENTS, reportAnalysisSchema, type ReportAnalysis } from "@/lib/schemas/analysis";
+import { DEFAULT_DURATION_MINUTES, durationForIntent } from "@/lib/presentation/limits";
+import {
+  applyCoverTitle,
+  ensureCover,
+  isContentFeedback,
+  isPptFeedback,
+  needsDeckLlm,
+  parseCoverTitle,
+  parseRequestedPageCount,
+  pptNotesFrom,
+  PPT_NOTE_PREFIX,
+  toPptNote,
+  withoutPptNotes,
+} from "@/lib/presentation/ppt-feedback";
 import type { Fact } from "@/lib/presentation/types";
 import { briefSchema, type Brief } from "@/lib/schemas/brief";
-import {
-  REPORT_INTENTS,
-  reportAnalysisSchema,
-  type ReportAnalysis,
-} from "@/lib/schemas/analysis";
 import { auditReportSchema, type AuditReport } from "@/lib/schemas/audit";
 import type { DeckSpec } from "@/lib/schemas/deck";
 import { auditProject } from "@/lib/llm/audit";
@@ -55,17 +66,34 @@ function parseAudit(raw: string | null): AuditReport | null {
 }
 
 export function toDTO(project: ProjectRecord): ProjectDTO {
+  const analysis = parseAnalysis(project.analysis);
+  const durationMinutes = analysis
+    ? durationForIntent(analysis.intent, project.durationMinutes)
+    : project.durationMinutes || DEFAULT_DURATION_MINUTES;
+  const derived = analysis
+    ? deckFromAnalysis({
+        reportBackground: project.leaderRequest,
+        durationMinutes,
+        analysis,
+      })
+    : null;
+  const stored = parseJson<DeckSpec | null>(project.deckSpec, null);
+  const useStoredPpt = Boolean(analysis && pptNotesFrom(analysis.excludedDetails).length > 0 && stored?.slides?.length);
+  const rawDeck = useStoredPpt ? stored : derived ?? stored;
+  const deck = rawDeck
+    ? stampDeckDuration(rawDeck, analysis ? INTENT_LABELS[analysis.intent] : "工作汇报", durationMinutes)
+    : null;
   return {
     id: project.id,
     status: asStatus(project.status),
     leaderRequest: project.leaderRequest,
-    durationMinutes: project.durationMinutes,
+    durationMinutes,
     materials: project.notesChunks ?? "",
     brief: parseJson<Brief | null>(project.brief, null),
-    analysis: parseAnalysis(project.analysis),
+    analysis,
     audit: parseAudit(project.audit),
     facts: parseJson<Fact[]>(project.facts, []),
-    deck: parseJson<DeckSpec | null>(project.deckSpec, null),
+    deck,
     deckId: project.deckId,
     errorMessage: project.errorMessage,
   };
@@ -92,20 +120,26 @@ async function runAnalysis(
   current?: ReportAnalysis,
   lockedIntent?: ReportAnalysis["intent"],
 ) {
+  const preservedPpt = pptNotesFrom(current?.excludedDetails ?? []);
   const analysis = await analyzeNarrative({
     reportBackground: project.leaderRequest,
     materials: project.notesChunks ?? "",
     durationMinutes: project.durationMinutes,
-    current,
+    current: current
+      ? { ...current, excludedDetails: withoutPptNotes(current.excludedDetails) }
+      : current,
     lockedIntent,
   });
+  analysis.excludedDetails = [...preservedPpt, ...withoutPptNotes(analysis.excludedDetails)];
+  const durationMinutes = durationForIntent(analysis.intent, project.durationMinutes);
   const deck = deckFromAnalysis({
     reportBackground: project.leaderRequest,
-    durationMinutes: project.durationMinutes,
+    durationMinutes,
     analysis,
   });
   updateProjectRow(project.id, {
     status: "ready",
+    durationMinutes,
     analysis: JSON.stringify(analysis),
     deckSpec: JSON.stringify(deck),
     facts: JSON.stringify([]),
@@ -115,6 +149,53 @@ async function runAnalysis(
   return getProjectDTO(project.id)!;
 }
 
+async function applyPptRevision(projectId: string, feedback: string) {
+  const project = getProjectRow(projectId);
+  if (!project) {
+    throw new Error("项目不存在");
+  }
+  const analysis = requireAnalysis(project);
+  const durationMinutes = durationForIntent(analysis.intent, project.durationMinutes);
+  const preview = toDTO(project);
+  const base =
+    preview.deck ??
+    deckFromAnalysis({
+      reportBackground: project.leaderRequest,
+      durationMinutes,
+      analysis,
+    });
+  const pageCount = parseRequestedPageCount(feedback);
+  const coverTitle = parseCoverTitle(feedback);
+  let deck = base;
+  if (needsDeckLlm(feedback)) {
+    deck = await reviseDeckFromFeedback({
+      feedback,
+      analysis,
+      current: deck,
+      durationMinutes,
+    });
+  } else {
+    deck = ensureCover(deck);
+    if (pageCount) {
+      deck = fitDeckToPageCount(deck, pageCount);
+    }
+    if (coverTitle) {
+      deck = applyCoverTitle(deck, coverTitle);
+    }
+  }
+  deck = stampDeckDuration(deck, INTENT_LABELS[analysis.intent], durationMinutes);
+  updateProjectRow(projectId, {
+    status: "ready",
+    analysis: JSON.stringify({
+      ...analysis,
+      excludedDetails: [...withoutPptNotes(analysis.excludedDetails), toPptNote(feedback)],
+    }),
+    deckSpec: JSON.stringify(deck),
+    audit: null,
+    errorMessage: null,
+  });
+}
+
 export async function createAndAnalyze(input: {
   reportBackground?: string;
   leaderRequest?: string;
@@ -122,7 +203,7 @@ export async function createAndAnalyze(input: {
   durationMinutes?: number;
   useDemo?: boolean;
 }): Promise<ProjectDTO> {
-  const durationMinutes = input.durationMinutes && input.durationMinutes > 0 ? input.durationMinutes : 10;
+  const durationMinutes = input.durationMinutes && input.durationMinutes > 0 ? input.durationMinutes : DEFAULT_DURATION_MINUTES;
   const reportBackground = input.useDemo
     ? DEMO_REPORT_BACKGROUND
     : (input.reportBackground ?? input.leaderRequest ?? "").trim();
@@ -212,14 +293,16 @@ export async function saveAnalysis(
   if (!reportBackground) {
     throw new Error("请填写最初的汇报背景");
   }
+  const durationMinutes = durationForIntent(analysis.intent, project.durationMinutes);
   const deck = deckFromAnalysis({
     reportBackground,
-    durationMinutes: project.durationMinutes,
+    durationMinutes,
     analysis,
   });
 
   updateProjectRow(projectId, {
     status: "ready",
+    durationMinutes,
     leaderRequest: reportBackground,
     notesChunks: materials,
     analysis: JSON.stringify(analysis),
@@ -242,13 +325,26 @@ export async function reviseProject(projectId: string, feedback: string): Promis
   }
 
   const current = requireAnalysis(project);
+  const ppt = isPptFeedback(trimmed);
+  const content = isContentFeedback(trimmed) || !ppt;
   updateProjectRow(projectId, { status: "generating", errorMessage: null });
 
   try {
-    return await runAnalysis(getProjectRow(projectId)!, {
-      ...current,
-      excludedDetails: [...current.excludedDetails, `用户意见：${trimmed}`],
-    });
+    if (content) {
+      await runAnalysis(getProjectRow(projectId)!, {
+        ...current,
+        excludedDetails: [...withoutPptNotes(current.excludedDetails), `用户意见：${trimmed}`],
+      });
+    }
+    if (ppt) {
+      await applyPptRevision(projectId, trimmed);
+    } else {
+      const lastPpt = pptNotesFrom(requireAnalysis(getProjectRow(projectId)!).excludedDetails).at(-1);
+      if (lastPpt) {
+        await applyPptRevision(projectId, lastPpt.slice(PPT_NOTE_PREFIX.length));
+      }
+    }
+    return getProjectDTO(projectId)!;
   } catch (error) {
     updateProjectRow(projectId, {
       status: "ready",
@@ -258,24 +354,29 @@ export async function reviseProject(projectId: string, feedback: string): Promis
   }
 }
 
-export async function exportProjectPptx(projectId: string, _pageCount: number): Promise<ProjectDTO> {
+export async function exportProjectPptx(projectId: string, requestedPageCount: number): Promise<ProjectDTO> {
   const project = getProjectRow(projectId);
   if (!project) {
     throw new Error("项目不存在");
   }
 
   const analysis = parseAnalysis(project.analysis);
-  let deck = parseJson<DeckSpec | null>(project.deckSpec, null);
+  const durationMinutes = analysis
+    ? durationForIntent(analysis.intent, project.durationMinutes)
+    : project.durationMinutes;
+  const preview = toDTO(project);
+  let deck = preview.deck;
   if (!deck && analysis) {
     deck = deckFromAnalysis({
       reportBackground: project.leaderRequest,
-      durationMinutes: project.durationMinutes,
+      durationMinutes,
       analysis,
     });
   }
   if (!deck) {
     throw new Error("还没有模版");
   }
+  deck = fitDeckToPageCount(deck, requestedPageCount);
 
   updateProjectRow(projectId, { status: "generating", errorMessage: null });
 
@@ -329,13 +430,15 @@ export async function auditProjectById(projectId: string): Promise<ProjectDTO> {
     }
   }
 
+  const dto = toDTO(project);
+
   const report = await auditProject({
     reportBackground: project.leaderRequest,
     materials: project.notesChunks ?? "",
-    durationMinutes: project.durationMinutes,
-    analysis: parseAnalysis(project.analysis),
-    deck: parseJson<DeckSpec | null>(project.deckSpec, null),
-    facts: parseJson<Fact[]>(project.facts, []),
+    durationMinutes: dto.durationMinutes,
+    analysis: dto.analysis,
+    deck: dto.deck,
+    facts: dto.facts,
     pptxBytes,
   });
 

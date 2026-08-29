@@ -1,6 +1,6 @@
 import type { Brief } from "@/lib/schemas/brief";
 
-export const DEMO_LEADER_REQUEST = `周五给管理层十分钟，别做成流水账。重点看几个关键事项现在推进到哪、有没有要拍的板。技术细节少讲，除非已经卡住进度。`;
+export const DEMO_LEADER_REQUEST = `周五给管理层五分钟，别做成流水账。重点看几个关键事项现在推进到哪、有没有要拍的板。技术细节少讲，除非已经卡住进度。`;
 
 export function getDemoBrief(): Brief {
   return {

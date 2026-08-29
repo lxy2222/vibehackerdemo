@@ -200,7 +200,7 @@ export function VoiceTextarea({
           ? "正在识别中文语音，说完再点一次停止。也可以边说边改字。"
           : "可以打字，或点「语音输入」口述。"}
       </p>
-      {error ? <p className="text-sm text-[var(--cta)]">{error}</p> : null}
+      {error ? <p className="notice-error">{error}</p> : null}
     </div>
   );
 }

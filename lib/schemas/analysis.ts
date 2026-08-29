@@ -19,7 +19,7 @@ export const INTENT_LABELS: Record<ReportIntent, string> = {
 };
 
 export const INTENT_FOCUS: Record<ReportIntent, string> = {
-  result: "围绕已经做成的结果：领导要判断效果够不够。结论写结果，发现写可对照的产出，不要写成流水账进度。",
+  result: "围绕已经做成的结果：领导要判断效果够不够。五分钟讲完。结论写结果，发现尽量保留材料里能上台的要点，不要写成流水账进度。",
   progress: "围绕现在做到哪：领导要判断是否按计划、卡在哪。结论写当前状态和阻塞，不要写成已经证明结果。",
   retrospective: "围绕原定目标和最终结果：做对了什么、没做成什么、原因是什么。",
   decision: "围绕需要当场拍的板：选项、代价、推荐，不要只同步进展。",

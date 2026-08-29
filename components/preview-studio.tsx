@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { AuditPanel } from "@/components/audit-panel";
 import { SlidePreview } from "@/components/slide-preview";
+import { clampPageCount, DEFAULT_PAGE_COUNT, MAX_PAGE_COUNT } from "@/lib/presentation/limits";
 import type { AuditReport } from "@/lib/schemas/audit";
 import type { ProjectDTO } from "@/lib/projects/types";
 
@@ -14,7 +15,7 @@ async function readError(response: Response) {
 
 export function PreviewStudio({ project }: { project: ProjectDTO }) {
   const router = useRouter();
-  const slideCount = project.deck?.slides.length ?? 6;
+  const slideCount = clampPageCount(project.deck?.slides.length ?? DEFAULT_PAGE_COUNT);
   const [feedback, setFeedback] = useState("");
   const [pageCount, setPageCount] = useState(slideCount);
   const [seenSlideCount, setSeenSlideCount] = useState(slideCount);
@@ -61,7 +62,7 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
   if (!deck) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-[var(--cta)]">{project.errorMessage ?? "还没有模版"}</p>
+        <p className="notice-error">{project.errorMessage ?? "还没有模版"}</p>
         <a className="btn-secondary" href={`/projects/${project.id}/outline`}>
           返回确认主线
         </a>
@@ -130,7 +131,7 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
           className="field min-h-24"
           value={feedback}
           onChange={(event) => setFeedback(event.target.value)}
-          placeholder="例如：结论再锋利一点、风险写轻了"
+          placeholder="例如：只要两页、封面标题改成跨国家复用、结论再锋利一点"
         />
         <button className="btn-primary" type="button" disabled={pending || !feedback.trim()} onClick={revise}>
           {pending ? "正在按意见重生成…" : "按意见重生成"}
@@ -142,19 +143,19 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
         <p className="text-sm text-[var(--olive)]">
           {audit?.status === "needs_revision"
             ? "还有阻塞项。可以先改主线或按意见重生成，仍要导出也可以。"
-            : "指定页数后生成可编辑 PPTX。网页预览已经可以开会用。"}
+            : "指定 1–4 页后生成可编辑 PPTX。网页预览已经可以开会用。"}
         </p>
         <label className="block max-w-40 space-y-2 text-sm">
-          <span className="font-medium">页数（4–12）</span>
+          <span className="font-medium">页数（1–4）</span>
           <input
             className="field"
             type="number"
-            min={4}
-            max={12}
+            min={1}
+            max={4}
             value={pageCount}
             onChange={(event) => {
               setPageCountTouched(true);
-              setPageCount(Number(event.target.value) || 6);
+              setPageCount(clampPageCount(Number(event.target.value) || MAX_PAGE_COUNT));
             }}
           />
         </label>
@@ -172,7 +173,7 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
         ) : null}
       </section>
 
-      {error ? <p className="text-sm text-[var(--cta)]">{error}</p> : null}
+      {error ? <p className="notice-error">{error}</p> : null}
     </div>
   );
 }

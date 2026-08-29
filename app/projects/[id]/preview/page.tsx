@@ -24,7 +24,7 @@ export default async function PreviewPage({
     <AppShell wide>
       <div className="max-w-3xl space-y-4">
         <p className="kicker">预览</p>
-        <h1 className="text-4xl font-semibold tracking-tight">{project.deck?.title ?? "汇报模版"}</h1>
+        <h1 className="font-display text-4xl tracking-tight">{project.deck?.title ?? "汇报模版"}</h1>
         <p className="text-base leading-7 text-[var(--olive)]">
           {project.deck?.subtitle ?? "先预览网页幻灯片，需要时再导出 PPT。"}{" "}
           <a className="underline" href={`/projects/${id}/outline`}>

@@ -1,9 +1,25 @@
 import { INTENT_LABELS, INTENT_SLIDE_LABELS, type ReportAnalysis } from "@/lib/schemas/analysis";
+import {
+  COVER_SECONDS,
+  DEFAULT_PAGE_COUNT,
+  MAX_BODY_BULLETS,
+  SLIDE_SECONDS,
+  clampPageCount,
+  durationForIntent,
+} from "@/lib/presentation/limits";
 import type { DeckSpec, SlideSpec } from "@/lib/presentation/types";
 
 function clipHeadline(text: string) {
   const chars = [...text.trim()];
   return chars.length <= 24 ? text.trim() : chars.slice(0, 24).join("");
+}
+
+function clean(items: string[]) {
+  return items.map((item) => item.trim()).filter(Boolean);
+}
+
+function pack(items: string[], prefix: string) {
+  return clean(items).map((item) => (item.startsWith(`${prefix}：`) ? item : `${prefix}：${item}`));
 }
 
 export function titleFromMaterials(analysis: ReportAnalysis, reportBackground: string) {
@@ -18,8 +34,17 @@ function slide(partial: Omit<SlideSpec, "id" | "estimatedSeconds"> & { estimated
   return {
     ...partial,
     id: `s${index + 1}`,
-    estimatedSeconds: partial.estimatedSeconds ?? 50,
+    estimatedSeconds: partial.estimatedSeconds ?? SLIDE_SECONDS,
   };
+}
+
+export function packBodyBullets(analysis: ReportAnalysis) {
+  return [
+    ...pack(analysis.keyFindings, "发现"),
+    ...pack([...analysis.risks, ...analysis.missingInformation], "风险"),
+    ...pack(analysis.nextActions, "下一步"),
+    ...(analysis.decisionAsk ? [`待拍板：${analysis.decisionAsk.trim()}`] : []),
+  ].slice(0, MAX_BODY_BULLETS);
 }
 
 export function deckFromAnalysis(input: {
@@ -27,9 +52,12 @@ export function deckFromAnalysis(input: {
   durationMinutes: number;
   analysis: ReportAnalysis;
 }): DeckSpec {
-  const { analysis, durationMinutes, reportBackground } = input;
+  const { analysis, reportBackground } = input;
+  const durationMinutes = durationForIntent(analysis.intent, input.durationMinutes);
   const labels = INTENT_SLIDE_LABELS[analysis.intent];
   const title = titleFromMaterials(analysis, reportBackground);
+  const bodyBullets = packBodyBullets(analysis);
+
   const slides: SlideSpec[] = [
     slide(
       {
@@ -39,7 +67,7 @@ export function deckFromAnalysis(input: {
         bullets: [`${INTENT_LABELS[analysis.intent]} · ${durationMinutes} 分钟`],
         factRefs: [],
         speakerNotes: "",
-        estimatedSeconds: 20,
+        estimatedSeconds: COVER_SECONDS,
       },
       0,
     ),
@@ -48,54 +76,74 @@ export function deckFromAnalysis(input: {
         type: "executive_summary",
         headline: labels.summary,
         takeaway: analysis.coreConclusion,
-        bullets: analysis.keyFindings.slice(0, 5),
+        bullets: bodyBullets,
         factRefs: [],
-        speakerNotes: "先讲结论和关键发现，数字只用来自材料的表述。",
+        speakerNotes: "第二页尽量讲全：结论、发现、风险、下一步和拍板。数字只用来自材料的表述。",
       },
       1,
     ),
   ];
 
-  const problemBullets = [...analysis.risks, ...analysis.missingInformation].slice(0, 5);
-  if (problemBullets.length > 0) {
-    slides.push(
-      slide(
-        {
-          type: "diagnosis",
-          headline: labels.diagnosis,
-          takeaway: analysis.risks[0] || analysis.missingInformation[0] || "先把会上可能被追问的风险点讲清楚",
-          bullets: problemBullets,
-          factRefs: [],
-          speakerNotes: "只讲风险点，没有的数字不要补。",
-        },
-        slides.length,
-      ),
-    );
-  }
-
-  const actionBullets = [
-    ...analysis.nextActions,
-    ...(analysis.decisionAsk ? [`待拍板：${analysis.decisionAsk}`] : []),
-  ].slice(0, 5);
-  if (actionBullets.length > 0) {
-    slides.push(
-      slide(
-        {
-          type: "recommendations",
-          headline: labels.action,
-          takeaway: analysis.decisionAsk || analysis.nextActions[0] || "下一步按已确认主线推进",
-          bullets: actionBullets,
-          factRefs: [],
-          speakerNotes: "只讲下一步和需要领导拍的板。",
-        },
-        slides.length,
-      ),
-    );
-  }
-
   return {
     title,
     subtitle: `${INTENT_LABELS[analysis.intent]} · ${durationMinutes} 分钟`,
-    slides,
+    slides: slides.slice(0, DEFAULT_PAGE_COUNT),
+  };
+}
+
+export function stampDeckDuration(deck: DeckSpec, intentLabel: string, durationMinutes: number): DeckSpec {
+  const label = `${intentLabel} · ${durationMinutes} 分钟`;
+  return {
+    ...deck,
+    subtitle: label,
+    slides: deck.slides.map((slide) =>
+      slide.type === "cover" ? { ...slide, bullets: [label] } : slide,
+    ),
+  };
+}
+
+export function fitDeckToPageCount(deck: DeckSpec, pageCount: number): DeckSpec {
+  const n = clampPageCount(pageCount);
+  const slides = deck.slides;
+  if (slides.length <= n) {
+    return {
+      ...deck,
+      slides: slides.map((item, index) => ({ ...item, id: `s${index + 1}` })),
+    };
+  }
+
+  const cover = slides[0];
+  const rest = slides.slice(1);
+  const mergedBullets = rest.flatMap((item) => item.bullets).slice(0, MAX_BODY_BULLETS);
+
+  if (n === 1) {
+    return {
+      ...deck,
+      slides: [
+        {
+          ...cover,
+          type: "cover",
+          takeaway: cover.takeaway || rest[0]?.takeaway || "",
+          bullets: mergedBullets,
+          estimatedSeconds: COVER_SECONDS,
+        },
+      ],
+    };
+  }
+
+  return {
+    ...deck,
+    slides: [
+      cover,
+      {
+        ...(rest[0] ?? cover),
+        id: "s2",
+        type: rest[0]?.type ?? "executive_summary",
+        takeaway: rest[0]?.takeaway || cover.takeaway,
+        bullets: mergedBullets,
+        estimatedSeconds: SLIDE_SECONDS,
+      },
+      ...rest.slice(1, n - 1),
+    ].slice(0, n).map((item, index) => ({ ...item, id: `s${index + 1}` })),
   };
 }

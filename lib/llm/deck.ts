@@ -11,14 +11,14 @@ import { normalizeDeckSpec, type NormalizeContext } from "@/lib/validation/deck"
 
 const EXAMPLE = {
   title: "Q2 业务进展",
-  subtitle: "管理层周会 · 关注进度 · 10 分钟",
+  subtitle: "管理层周会 · 关注进度 · 5 分钟",
   slides: [
     {
       id: "s1",
       type: "cover",
       headline: "Q2 业务进展",
       takeaway: "能交卷，关键事项还没打赢",
-      bullets: ["关注：关注进度、关注拍板", "时长：10 分钟"],
+      bullets: ["关注：关注进度、关注拍板", "时长：5 分钟"],
       factRefs: [],
       speakerNotes: "",
       estimatedSeconds: 20,
@@ -64,13 +64,13 @@ function systemPrompt(extra: string) {
 硬性规则：
 - type 只能是：${TEMPLATE_SLIDE_TYPES.join("、")}。不要使用 kpi_overview、trend、comparison。
 - 不含 x/y/fontSize。图表只写 type 和 factRefs，不写数据点。
-- 标题不超过 24 个汉字，每页最多 5 条 bullet。
-- 所有数字必须写成 {{fact_id}} 占位符，禁止裸数字（如 35%、1200）。封面时长可以用「10 分钟」这种用户给定时长。
+- 标题不超过 24 个汉字。默认两页，第二页尽量把要点塞满，不要每页只写三句。
+- 所有数字必须写成 {{fact_id}} 占位符，禁止裸数字（如 35%、1200）。封面时长可以用「5 分钟」这种用户给定时长。
 - 只能引用提供的 fact id，不要编造表单里没有的事项和数字。
 - funnel 页仅在用户提供了漏斗阶段数字时使用，factRefs 用 fact_funnel_1 这类阶段事实；没有漏斗数据就不要生成 funnel 页。
 - progress 页 bullets 格式：事项｜状态｜负责人｜说明。
 - 行动计划 bullets 格式：行动｜负责人｜截止。
-- speakerNotes 是 40–80 秒中文讲稿。
+- speakerNotes 是 20–40 秒中文讲稿，写短。
 ${extra}
 示例结构：${JSON.stringify(EXAMPLE)}`;
 }

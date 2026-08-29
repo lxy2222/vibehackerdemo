@@ -30,10 +30,10 @@ function LineList({ title, items, tone }: { title: string; items: string[]; tone
     <div className="space-y-2">
       <p className="text-sm font-medium">{title}</p>
       <ul className="space-y-1.5 text-sm leading-6">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <li
-            key={item}
-            className={tone === "block" ? "text-[var(--cta)]" : "text-[var(--olive)]"}
+            key={index}
+            className={tone === "block" ? "text-[var(--error)]" : "text-[var(--olive)]"}
           >
             {item}
           </li>

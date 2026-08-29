@@ -194,7 +194,7 @@ export function NotionConnect({
       ) : null}
 
       {message ? <p className="text-sm text-[var(--olive)]">{message}</p> : null}
-      {error ? <p className="text-sm text-[var(--cta)]">{error}</p> : null}
+      {error ? <p className="notice-error">{error}</p> : null}
     </section>
   );
 }

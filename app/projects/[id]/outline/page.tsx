@@ -24,9 +24,9 @@ export default async function OutlinePage({
     <AppShell>
       <div className="max-w-3xl space-y-4">
         <p className="kicker">确认汇报主线</p>
-        <h1 className="text-4xl font-semibold tracking-tight">先看领导要判断什么</h1>
+        <h1 className="font-display text-4xl tracking-tight">先看领导要判断什么</h1>
         <p className="text-base leading-7 text-[var(--olive)]">
-          改结论或补一句材料后可以重新分析。数字只保留材料里出现过的。
+          先看分析出的主线。要改最初的背景或材料，点「重新生成背景」。
         </p>
       </div>
       <WizardNav current="confirm" />

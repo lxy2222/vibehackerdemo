@@ -41,7 +41,7 @@ export function OutlineForm({ project }: { project: ProjectDTO }) {
   if (!project.deck) {
     return (
       <div className="space-y-4">
-        <p className="text-sm text-red-700">还没有大纲，请先确认需求。</p>
+        <p className="notice-error">还没有大纲，请先确认需求。</p>
         <a className="btn-secondary" href={`/projects/${project.id}/clarify`}>
           返回确认需求
         </a>
@@ -130,15 +130,15 @@ export function OutlineForm({ project }: { project: ProjectDTO }) {
           ) : null}
           {slide.bullets.length > 0 ? (
             <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--olive)]">
-              {slide.bullets.map((bullet) => (
-                <li key={bullet}>{interpolate(bullet, facts)}</li>
+              {slide.bullets.map((bullet, index) => (
+                <li key={index}>{interpolate(bullet, facts)}</li>
               ))}
             </ul>
           ) : null}
         </section>
       ))}
 
-      {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p className="notice-error">{error}</p> : null}
 
       <button className="btn-primary" type="submit" disabled={pending}>
         {pending ? "正在生成 PPT…" : "生成 PPT"}

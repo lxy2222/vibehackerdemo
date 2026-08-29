@@ -10,7 +10,7 @@ const EXAMPLE = {
   goal: "给管理层做活动复盘",
   audience: null,
   deadline: "周五下午",
-  durationMinutes: 10,
+  durationMinutes: 5,
   reportType: "project_review",
   focusMetrics: ["效果", "问题", "预算"],
   expectedDecisions: [],

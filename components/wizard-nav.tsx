@@ -22,10 +22,10 @@ export function WizardNav({
             key={step.key}
             className={
               active
-                ? "rounded-full bg-[var(--title)] px-4 py-1.5 font-medium text-[#fcffff]"
+                ? "rounded-full bg-[linear-gradient(135deg,#ff9ec8,#ff7eb3)] px-4 py-1.5 font-medium text-[#fffdfb] shadow-[0_8px_16px_rgb(255_126_179_/_0.28)]"
                 : done
-                  ? "rounded-full bg-[var(--cream)] px-4 py-1.5 text-[var(--olive)]"
-                  : "rounded-full bg-[var(--lavender)] px-4 py-1.5 text-[var(--muted)]"
+                  ? "rounded-full bg-[var(--mint)]/45 px-4 py-1.5 text-[#3f7468]"
+                  : "rounded-full bg-[var(--lilac)] px-4 py-1.5 text-[var(--muted)]"
             }
           >
             {index + 1}. {step.label}

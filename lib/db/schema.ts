@@ -4,7 +4,7 @@ export const projects = sqliteTable("projects", {
   id: text("id").primaryKey(),
   status: text("status").notNull(),
   leaderRequest: text("leader_request").notNull(),
-  durationMinutes: integer("duration_minutes").notNull().default(10),
+  durationMinutes: integer("duration_minutes").notNull().default(5),
   brief: text("brief"),
   requirementSpec: text("requirement_spec"),
   clarificationAnswers: text("clarification_answers"),

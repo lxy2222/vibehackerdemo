@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { clearConfirmDraft, loadConfirmDraft, saveConfirmDraft } from "@/lib/draft/form-draft";
 import {
   INTENT_LABELS,
@@ -51,6 +51,8 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
   const [error, setError] = useState<string | null>(project.errorMessage);
   const [analyzing, startAnalyze] = useTransition();
   const [saving, startSave] = useTransition();
+  const [editingSource, setEditingSource] = useState(false);
+  const sourceRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const draft = loadConfirmDraft(project.id);
@@ -123,6 +125,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
       }
       applyProject((await response.json()) as ProjectDTO);
       clearConfirmDraft(project.id);
+      setEditingSource(false);
       router.refresh();
     });
   }
@@ -151,7 +154,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
   if (!initial && project.status === "failed") {
     return (
       <div className="panel space-y-4 p-6">
-        <p className="text-sm text-[var(--cta)]">{project.errorMessage ?? "分析失败"}</p>
+        <p className="notice-error">{project.errorMessage ?? "分析失败"}</p>
         <a className="btn-secondary" href="/">
           返回创建
         </a>
@@ -159,47 +162,72 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
     );
   }
 
+  function toggleSource() {
+    setEditingSource((open) => {
+      const next = !open;
+      if (next) {
+        window.requestAnimationFrame(() => {
+          sourceRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+      return next;
+    });
+  }
+
   return (
     <div className="space-y-8">
-      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
-      <section className="panel space-y-4 p-7">
-        <VoiceTextarea
-          label="我最初的汇报背景"
-          value={reportBackground}
-          onChange={(next) => {
-            setReportBackground(next);
-            persistDraft({ reportBackground: next });
-          }}
-          placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪"
-          required
-          minClassName="min-h-36"
-        />
-      </section>
-
-      <section className="panel space-y-4 p-7">
-        <h2 className="text-base font-medium">工作对话或材料</h2>
-        <NotionConnect
-          returnTo={`/projects/${project.id}/outline`}
-          onBeforeConnect={() => persistDraft()}
-          onImported={(text) => {
-            setMaterials((current) => {
-              const next = current.trim() ? `${current.trim()}\n\n${text}` : text;
-              persistDraft({ materials: next });
-              return next;
-            });
-          }}
-        />
-        <textarea
-          className="field min-h-28"
-          value={materials}
-          onChange={(event) => {
-            setMaterials(event.target.value);
-            persistDraft({ materials: event.target.value });
-          }}
-        />
-        <p className="text-base text-[var(--olive)]">可以补一句材料或从 Notion 导入后重新分析。</p>
-      </section>
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <button className="btn-secondary" type="button" disabled={analyzing || saving} onClick={toggleSource}>
+          {editingSource ? "收起背景" : "重新生成背景"}
+        </button>
+        {editingSource ? (
+          <button className="btn-secondary" type="button" disabled={analyzing || saving} onClick={() => reanalyze()}>
+            {analyzing ? "正在重新分析…" : "重新分析"}
+          </button>
+        ) : null}
       </div>
+
+      {editingSource ? (
+        <div ref={sourceRef} className="grid gap-6 lg:grid-cols-2 lg:items-start">
+          <section className="panel space-y-4 p-7">
+            <VoiceTextarea
+              label="我最初的汇报背景"
+              value={reportBackground}
+              onChange={(next) => {
+                setReportBackground(next);
+                persistDraft({ reportBackground: next });
+              }}
+              placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪"
+              required
+              minClassName="min-h-36"
+            />
+          </section>
+
+          <section className="panel space-y-4 p-7">
+            <h2 className="text-base font-medium">工作对话或材料</h2>
+            <NotionConnect
+              returnTo={`/projects/${project.id}/outline`}
+              onBeforeConnect={() => persistDraft()}
+              onImported={(text) => {
+                setMaterials((current) => {
+                  const next = current.trim() ? `${current.trim()}\n\n${text}` : text;
+                  persistDraft({ materials: next });
+                  return next;
+                });
+              }}
+            />
+            <textarea
+              className="field min-h-28"
+              value={materials}
+              onChange={(event) => {
+                setMaterials(event.target.value);
+                persistDraft({ materials: event.target.value });
+              }}
+            />
+            <p className="text-base text-[var(--olive)]">改完背景或材料后点「重新分析」，会按新内容重写主线。</p>
+          </section>
+        </div>
+      ) : null}
 
       <form className="panel grid gap-6 p-7 md:grid-cols-2">
         <label className="block space-y-2 md:col-span-2">
@@ -302,12 +330,9 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
 
       </form>
 
-      {error ? <p className="text-sm text-[var(--cta)]">{error}</p> : null}
+      {error ? <p className="notice-error">{error}</p> : null}
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <button className="btn-secondary" type="button" disabled={analyzing || saving} onClick={() => reanalyze()}>
-          {analyzing ? "正在重新分析…" : "重新分析"}
-        </button>
         <button className="btn-primary" type="button" disabled={analyzing || saving} onClick={goPreview}>
           {saving ? "正在生成预览…" : "确认并预览"}
         </button>

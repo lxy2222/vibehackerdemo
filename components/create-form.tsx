@@ -16,7 +16,7 @@ export function CreateForm() {
   const router = useRouter();
   const [reportBackground, setReportBackground] = useState("");
   const [materials, setMaterials] = useState("");
-  const [durationMinutes, setDurationMinutes] = useState(10);
+  const [durationMinutes, setDurationMinutes] = useState(5);
   const [loadedCase, setLoadedCase] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -28,7 +28,7 @@ export function CreateForm() {
     }
     setReportBackground(draft.reportBackground);
     setMaterials(draft.materials);
-    setDurationMinutes(draft.durationMinutes ?? 10);
+    setDurationMinutes(draft.durationMinutes ?? 5);
   }, []);
 
   function persistDraft(next?: Partial<{ reportBackground: string; materials: string; durationMinutes: number }>) {
@@ -107,7 +107,7 @@ export function CreateForm() {
           setLoadedCase(null);
           persistDraft({ reportBackground: next });
         }}
-        placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪，例如周五给管理层十分钟，重点讲复用后的交付效率"
+        placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪，例如周五给管理层五分钟，重点讲复用后的交付效率"
         required
         minClassName="min-h-48"
       />
@@ -148,7 +148,7 @@ export function CreateForm() {
           max={90}
           value={durationMinutes}
           onChange={(event) => {
-            const next = Number(event.target.value) || 10;
+            const next = Number(event.target.value) || 5;
             setDurationMinutes(next);
             persistDraft({ durationMinutes: next });
           }}
@@ -157,23 +157,12 @@ export function CreateForm() {
 
       {loadedCase ? <p className="text-sm text-[var(--olive)]">已填入测试材料。{loadedCase}</p> : null}
 
-      {error ? <p className="text-sm text-[var(--cta)]">{error}</p> : null}
+      {error ? <p className="notice-error">{error}</p> : null}
 
       <div className="flex flex-col gap-3">
         <button className="btn-primary" type="submit" disabled={pending}>
           {pending ? "正在分析主线…" : "分析汇报主线"}
         </button>
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button className="btn-secondary" type="button" disabled={pending} onClick={() => void loadCase("ready")}>
-            完整 demo
-          </button>
-          <button className="btn-secondary" type="button" disabled={pending} onClick={() => void loadCase("blocker")}>
-            点名转化（应阻塞）
-          </button>
-          <button className="btn-secondary" type="button" disabled={pending} onClick={() => void loadCase("suggestion")}>
-            缺量化（建议）
-          </button>
-        </div>
       </div>
     </form>
   );

@@ -131,35 +131,35 @@ function renderCover(pres: Pres, spec: SlideSpec, deck: DeckSpec) {
     fill: { color: theme.accent },
   });
   slide.addText("工作汇报", {
-    ...textOpts({ fontSize: 14, color: theme.primary, bold: true }),
+    ...textOpts({ fontSize: 14, color: theme.primary, bold: true, align: "center" }),
     x: 0.9,
     y: 2.15,
-    w: 11,
+    w: 11.5,
     h: 0.35,
   });
   slide.addText(spec.headline, {
-    ...textOpts({ fontSize: 40, bold: true }),
+    ...textOpts({ fontSize: 40, bold: true, align: "center" }),
     x: 0.9,
     y: 2.55,
     w: 11.5,
     h: 0.9,
   });
   slide.addText(spec.takeaway, {
-    ...textOpts({ fontSize: 20, color: theme.accent }),
+    ...textOpts({ fontSize: 20, color: theme.accent, align: "center" }),
     x: 0.9,
     y: 3.5,
     w: 11.5,
     h: 0.45,
   });
   slide.addText(deck.subtitle, {
-    ...textOpts({ fontSize: 16, color: theme.body }),
+    ...textOpts({ fontSize: 16, color: theme.body, align: "center" }),
     x: 0.9,
     y: 4.15,
     w: 11.5,
     h: 0.4,
   });
   slide.addText(spec.bullets.join("  ·  "), {
-    ...textOpts({ fontSize: 13, color: theme.muted }),
+    ...textOpts({ fontSize: 13, color: theme.muted, align: "center" }),
     x: 0.9,
     y: 6.55,
     w: 11.5,
@@ -171,20 +171,23 @@ function renderBullets(
   slide: Slide,
   spec: SlideSpec,
   facts: Map<string, Fact>,
-  y = 1.75,
+  y = 1.68,
 ) {
+  const count = spec.bullets.length;
+  const fontSize = count > 10 ? 12 : count > 6 ? 13 : 15;
+  const paraSpaceAfter = count > 10 ? 3 : count > 6 ? 5 : 8;
   slide.addText(
     spec.bullets.map((bullet) => ({
       text: interpolate(bullet, facts),
       options: { bullet: true, breakLine: true },
     })),
     {
-      ...textOpts({ fontSize: 16, color: theme.body }),
+      ...textOpts({ fontSize, color: theme.body }),
       x: 0.6,
       y,
       w: 12.1,
-      h: 4.8,
-      paraSpaceAfter: 10,
+      h: 6.95 - y,
+      paraSpaceAfter,
     },
   );
 }
@@ -379,7 +382,7 @@ function renderFunnel(
       y,
       w: width,
       h: 0.88,
-      fill: { color: index === 0 ? theme.primary : index === stages.length - 1 ? theme.accent : "1AA38C" },
+      fill: { color: index === 0 ? theme.primary : index === stages.length - 1 ? theme.accent : "7ED9C0" },
       line: { color: "FFFFFF" },
       rectRadius: 0.08,
     });
