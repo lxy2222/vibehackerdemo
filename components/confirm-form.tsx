@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { clearConfirmDraft, loadConfirmDraft, saveConfirmDraft } from "@/lib/draft/form-draft";
 import {
   INTENT_LABELS,
   REPORT_INTENTS,
@@ -51,6 +52,26 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
   const [analyzing, startAnalyze] = useTransition();
   const [saving, startSave] = useTransition();
 
+  useEffect(() => {
+    const draft = loadConfirmDraft(project.id);
+    if (!draft) {
+      return;
+    }
+    if (draft.reportBackground) {
+      setReportBackground(draft.reportBackground);
+    }
+    if (draft.materials) {
+      setMaterials(draft.materials);
+    }
+  }, [project.id]);
+
+  function persistDraft(next?: { reportBackground?: string; materials?: string }) {
+    saveConfirmDraft(project.id, {
+      reportBackground: next?.reportBackground ?? reportBackground,
+      materials: next?.materials ?? materials,
+    });
+  }
+
   function currentAnalysis(): ReportAnalysis {
     return {
       title: title.trim(),
@@ -82,7 +103,8 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
     setDecisionAsk(next.analysis.decisionAsk ?? "");
   }
 
-  function reanalyze() {
+  function reanalyze(nextIntent?: ReportIntent) {
+    const selectedIntent = nextIntent ?? intent;
     startAnalyze(async () => {
       setError(null);
       const response = await fetch(`/api/projects/${project.id}/analyze`, {
@@ -91,7 +113,8 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         body: JSON.stringify({
           reportBackground,
           materials,
-          analysis: currentAnalysis(),
+          analysis: { ...currentAnalysis(), intent: selectedIntent },
+          lockedIntent: nextIntent,
         }),
       });
       if (!response.ok) {
@@ -99,6 +122,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         return;
       }
       applyProject((await response.json()) as ProjectDTO);
+      clearConfirmDraft(project.id);
       router.refresh();
     });
   }
@@ -119,6 +143,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         setError(await readError(response));
         return;
       }
+      clearConfirmDraft(project.id);
       router.push(`/projects/${project.id}/preview`);
     });
   }
@@ -135,37 +160,50 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="panel space-y-3 p-5">
+    <div className="space-y-8">
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
+      <section className="panel space-y-4 p-7">
         <VoiceTextarea
           label="我最初的汇报背景"
           value={reportBackground}
-          onChange={setReportBackground}
+          onChange={(next) => {
+            setReportBackground(next);
+            persistDraft({ reportBackground: next });
+          }}
           placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪"
           required
-          minClassName="min-h-24"
+          minClassName="min-h-36"
         />
       </section>
 
-      <section className="panel space-y-3 p-5">
-        <h2 className="text-sm font-medium">工作对话或材料</h2>
+      <section className="panel space-y-4 p-7">
+        <h2 className="text-base font-medium">工作对话或材料</h2>
         <NotionConnect
           returnTo={`/projects/${project.id}/outline`}
+          onBeforeConnect={() => persistDraft()}
           onImported={(text) => {
-            setMaterials((current) => (current.trim() ? `${current.trim()}\n\n${text}` : text));
+            setMaterials((current) => {
+              const next = current.trim() ? `${current.trim()}\n\n${text}` : text;
+              persistDraft({ materials: next });
+              return next;
+            });
           }}
         />
         <textarea
           className="field min-h-28"
           value={materials}
-          onChange={(event) => setMaterials(event.target.value)}
+          onChange={(event) => {
+            setMaterials(event.target.value);
+            persistDraft({ materials: event.target.value });
+          }}
         />
-        <p className="text-sm text-[var(--olive)]">可以补一句材料或从 Notion 导入后重新分析。</p>
+        <p className="text-base text-[var(--olive)]">可以补一句材料或从 Notion 导入后重新分析。</p>
       </section>
+      </div>
 
-      <form className="panel space-y-5 p-5">
-        <label className="block space-y-2">
-          <span className="text-sm font-medium">汇报标题</span>
+      <form className="panel grid gap-6 p-7 md:grid-cols-2">
+        <label className="block space-y-2 md:col-span-2">
+          <span className="text-base font-medium">汇报标题</span>
           <input
             className="field"
             value={title}
@@ -176,7 +214,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium">1. 核心管理问题</span>
+          <span className="text-base font-medium">1. 核心管理问题</span>
           <textarea
             className="field min-h-20"
             value={leaderQuestion}
@@ -186,11 +224,19 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium">2. 系统判断的汇报目的</span>
+          <span className="text-base font-medium">2. 系统判断的汇报目的</span>
           <select
-            className="field max-w-xs"
+            className="field"
             value={intent}
-            onChange={(event) => setIntent(event.target.value as ReportIntent)}
+            disabled={analyzing || saving}
+            onChange={(event) => {
+              const next = event.target.value as ReportIntent;
+              if (next === intent) {
+                return;
+              }
+              setIntent(next);
+              reanalyze(next);
+            }}
           >
             {REPORT_INTENTS.map((value) => (
               <option key={value} value={value}>
@@ -198,10 +244,15 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
               </option>
             ))}
           </select>
+          <p className="text-base text-[var(--olive)]">
+            {analyzing
+              ? `正在按「${INTENT_LABELS[intent]}」重写主线…`
+              : "换进度汇报或结果汇报后，会按新目的重写问题、结论和发现。"}
+          </p>
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium">3. 一句话结论</span>
+          <span className="text-base font-medium">3. 一句话结论</span>
           <textarea
             className="field min-h-20"
             value={coreConclusion}
@@ -211,7 +262,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium">4. 关键发现</span>
+          <span className="text-base font-medium">4. 关键发现</span>
           <textarea
             className="field min-h-28"
             value={keyFindings}
@@ -221,7 +272,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium">5. 风险点</span>
+          <span className="text-base font-medium">5. 风险点</span>
           <textarea
             className="field min-h-24"
             value={risks}
@@ -231,7 +282,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium">6. 下一步行动</span>
+          <span className="text-base font-medium">6. 下一步行动</span>
           <textarea
             className="field min-h-24"
             value={nextActions}
@@ -241,7 +292,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
         </label>
 
         <label className="block space-y-2">
-          <span className="text-sm font-medium">7. 需要领导拍板的事项</span>
+          <span className="text-base font-medium">7. 需要领导拍板的事项</span>
           <textarea
             className="field min-h-20"
             value={decisionAsk}
@@ -254,7 +305,7 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
       {error ? <p className="text-sm text-[var(--cta)]">{error}</p> : null}
 
       <div className="flex flex-col gap-3 sm:flex-row">
-        <button className="btn-secondary" type="button" disabled={analyzing || saving} onClick={reanalyze}>
+        <button className="btn-secondary" type="button" disabled={analyzing || saving} onClick={() => reanalyze()}>
           {analyzing ? "正在重新分析…" : "重新分析"}
         </button>
         <button className="btn-primary" type="button" disabled={analyzing || saving} onClick={goPreview}>

@@ -23,6 +23,7 @@ function migrate(connection: Database.Database) {
       facts TEXT,
       notes_chunks TEXT,
       analysis TEXT,
+      audit TEXT,
       deck_spec TEXT,
       deck_id TEXT,
       error_message TEXT,
@@ -56,6 +57,9 @@ function migrate(connection: Database.Database) {
   }
   if (!columns.some((column) => column.name === "analysis")) {
     connection.exec("ALTER TABLE projects ADD COLUMN analysis TEXT");
+  }
+  if (!columns.some((column) => column.name === "audit")) {
+    connection.exec("ALTER TABLE projects ADD COLUMN audit TEXT");
   }
 }
 

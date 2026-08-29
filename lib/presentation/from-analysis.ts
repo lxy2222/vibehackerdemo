@@ -1,4 +1,4 @@
-import { INTENT_LABELS, type ReportAnalysis } from "@/lib/schemas/analysis";
+import { INTENT_LABELS, INTENT_SLIDE_LABELS, type ReportAnalysis } from "@/lib/schemas/analysis";
 import type { DeckSpec, SlideSpec } from "@/lib/presentation/types";
 
 function clipHeadline(text: string) {
@@ -28,6 +28,7 @@ export function deckFromAnalysis(input: {
   analysis: ReportAnalysis;
 }): DeckSpec {
   const { analysis, durationMinutes, reportBackground } = input;
+  const labels = INTENT_SLIDE_LABELS[analysis.intent];
   const title = titleFromMaterials(analysis, reportBackground);
   const slides: SlideSpec[] = [
     slide(
@@ -45,7 +46,7 @@ export function deckFromAnalysis(input: {
     slide(
       {
         type: "executive_summary",
-        headline: "核心结论",
+        headline: labels.summary,
         takeaway: analysis.coreConclusion,
         bullets: analysis.keyFindings.slice(0, 5),
         factRefs: [],
@@ -61,7 +62,7 @@ export function deckFromAnalysis(input: {
       slide(
         {
           type: "diagnosis",
-          headline: "风险点",
+          headline: labels.diagnosis,
           takeaway: analysis.risks[0] || analysis.missingInformation[0] || "先把会上可能被追问的风险点讲清楚",
           bullets: problemBullets,
           factRefs: [],
@@ -81,7 +82,7 @@ export function deckFromAnalysis(input: {
       slide(
         {
           type: "recommendations",
-          headline: "下一步与拍板",
+          headline: labels.action,
           takeaway: analysis.decisionAsk || analysis.nextActions[0] || "下一步按已确认主线推进",
           bullets: actionBullets,
           factRefs: [],

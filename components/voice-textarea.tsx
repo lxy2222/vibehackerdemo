@@ -170,7 +170,7 @@ export function VoiceTextarea({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-medium">{label}</span>
+        <span className="text-base font-medium">{label}</span>
         {supported ? (
           <button
             className={listening ? "btn-primary px-3 py-1.5 text-xs" : "btn-secondary px-3 py-1.5 text-xs"}
@@ -195,7 +195,7 @@ export function VoiceTextarea({
         required={required}
         aria-label={label}
       />
-      <p className="text-sm text-[var(--olive)]">
+      <p className="text-base text-[var(--olive)]">
         {listening
           ? "正在识别中文语音，说完再点一次停止。也可以边说边改字。"
           : "可以打字，或点「语音输入」口述。"}

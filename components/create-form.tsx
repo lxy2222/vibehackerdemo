@@ -1,9 +1,11 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { NotionConnect } from "@/components/notion-connect";
 import { VoiceTextarea } from "@/components/voice-textarea";
+import type { AuditCaseId } from "@/lib/demo/audit-cases";
+import { clearCreateDraft, loadCreateDraft, saveCreateDraft } from "@/lib/draft/form-draft";
 
 async function readError(response: Response) {
   const data = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -15,18 +17,38 @@ export function CreateForm() {
   const [reportBackground, setReportBackground] = useState("");
   const [materials, setMaterials] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(10);
-  const [useDemo, setUseDemo] = useState(false);
+  const [loadedCase, setLoadedCase] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  async function loadDemo() {
+  useEffect(() => {
+    const draft = loadCreateDraft();
+    if (!draft) {
+      return;
+    }
+    setReportBackground(draft.reportBackground);
+    setMaterials(draft.materials);
+    setDurationMinutes(draft.durationMinutes ?? 10);
+  }, []);
+
+  function persistDraft(next?: Partial<{ reportBackground: string; materials: string; durationMinutes: number }>) {
+    saveCreateDraft({
+      reportBackground: next?.reportBackground ?? reportBackground,
+      materials: next?.materials ?? materials,
+      durationMinutes: next?.durationMinutes ?? durationMinutes,
+    });
+  }
+
+  async function loadCase(id: AuditCaseId) {
     setError(null);
-    const response = await fetch("/api/demo-fixtures");
+    const response = await fetch(`/api/demo-fixtures?case=${id}`);
     if (!response.ok) {
       setError(await readError(response));
       return;
     }
     const data = (await response.json()) as {
+      label: string;
+      hint: string;
       reportBackground: string;
       materials: string;
       durationMinutes: number;
@@ -34,7 +56,12 @@ export function CreateForm() {
     setReportBackground(data.reportBackground);
     setMaterials(data.materials);
     setDurationMinutes(data.durationMinutes);
-    setUseDemo(true);
+    setLoadedCase(`${data.label}：${data.hint}`);
+    persistDraft({
+      reportBackground: data.reportBackground,
+      materials: data.materials,
+      durationMinutes: data.durationMinutes,
+    });
   }
 
   function submit() {
@@ -48,7 +75,6 @@ export function CreateForm() {
             reportBackground,
             materials,
             durationMinutes,
-            useDemo,
           }),
         });
         if (!response.ok) {
@@ -56,6 +82,7 @@ export function CreateForm() {
           return;
         }
         const project = (await response.json()) as { id: string };
+        clearCreateDraft();
         router.push(`/projects/${project.id}/outline`);
       } catch (err) {
         setError(err instanceof Error ? err.message : "分析失败");
@@ -65,44 +92,54 @@ export function CreateForm() {
 
   return (
     <form
-      className="panel space-y-6 p-6"
+      className="panel space-y-8 p-8"
       onSubmit={(event) => {
         event.preventDefault();
         submit();
       }}
     >
+      <div className="grid gap-8 lg:grid-cols-2 lg:items-start">
       <VoiceTextarea
         label="我最初的汇报背景"
         value={reportBackground}
         onChange={(next) => {
           setReportBackground(next);
-          setUseDemo(false);
+          setLoadedCase(null);
+          persistDraft({ reportBackground: next });
         }}
         placeholder="写下或口述这次想讲什么、给谁讲、现在卡在哪，例如周五给管理层十分钟，重点讲复用后的交付效率"
         required
+        minClassName="min-h-48"
       />
 
       <div className="space-y-3">
-        <span className="text-sm font-medium">工作对话或材料</span>
+        <span className="text-base font-medium">工作对话或材料</span>
         <NotionConnect
           returnTo="/"
+          onBeforeConnect={() => persistDraft()}
           onImported={(text) => {
-            setMaterials((current) => (current.trim() ? `${current.trim()}\n\n${text}` : text));
-            setUseDemo(false);
+            setMaterials((current) => {
+              const next = current.trim() ? `${current.trim()}\n\n${text}` : text;
+              persistDraft({ materials: next });
+              return next;
+            });
+            setLoadedCase(null);
           }}
         />
         <textarea
-          className="field min-h-40"
+          className="field min-h-48"
           value={materials}
           onChange={(event) => {
             setMaterials(event.target.value);
-            setUseDemo(false);
+            setLoadedCase(null);
+            persistDraft({ materials: event.target.value });
           }}
           placeholder="粘贴一段工作沟通、会议记录，或先连接 Notion 导入页面。"
         />
       </div>
+      </div>
 
-      <label className="block space-y-2 text-sm">
+      <label className="block max-w-xs space-y-2 text-base">
         <span className="font-medium">汇报时长（分钟，可选）</span>
         <input
           className="field max-w-40"
@@ -110,30 +147,33 @@ export function CreateForm() {
           min={1}
           max={90}
           value={durationMinutes}
-          onChange={(event) => setDurationMinutes(Number(event.target.value) || 10)}
+          onChange={(event) => {
+            const next = Number(event.target.value) || 10;
+            setDurationMinutes(next);
+            persistDraft({ durationMinutes: next });
+          }}
         />
       </label>
 
-      {useDemo ? (
-        <p className="text-sm text-[var(--olive)]">已填入 demo 汇报背景和工作对话。</p>
-      ) : null}
+      {loadedCase ? <p className="text-sm text-[var(--olive)]">已填入测试材料。{loadedCase}</p> : null}
 
       {error ? <p className="text-sm text-[var(--cta)]">{error}</p> : null}
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3">
         <button className="btn-primary" type="submit" disabled={pending}>
           {pending ? "正在分析主线…" : "分析汇报主线"}
         </button>
-        <button
-          className="btn-secondary"
-          type="button"
-          disabled={pending}
-          onClick={() => {
-            void loadDemo();
-          }}
-        >
-          使用 demo 材料
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button className="btn-secondary" type="button" disabled={pending} onClick={() => void loadCase("ready")}>
+            完整 demo
+          </button>
+          <button className="btn-secondary" type="button" disabled={pending} onClick={() => void loadCase("blocker")}>
+            点名转化（应阻塞）
+          </button>
+          <button className="btn-secondary" type="button" disabled={pending} onClick={() => void loadCase("suggestion")}>
+            缺量化（建议）
+          </button>
+        </div>
       </div>
     </form>
   );

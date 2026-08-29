@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { AuditPanel } from "@/components/audit-panel";
 import { SlidePreview } from "@/components/slide-preview";
+import type { AuditReport } from "@/lib/schemas/audit";
 import type { ProjectDTO } from "@/lib/projects/types";
 
 async function readError(response: Response) {
@@ -18,8 +20,10 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
   const [seenSlideCount, setSeenSlideCount] = useState(slideCount);
   const [pageCountTouched, setPageCountTouched] = useState(false);
   const [error, setError] = useState<string | null>(project.errorMessage);
+  const [audit, setAudit] = useState<AuditReport | null>(project.audit);
   const [pending, startTransition] = useTransition();
   const [exporting, startExport] = useTransition();
+  const [auditing, startAudit] = useTransition();
 
   if (slideCount !== seenSlideCount) {
     setSeenSlideCount(slideCount);
@@ -27,6 +31,31 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
       setPageCount(slideCount);
     }
   }
+
+  useEffect(() => {
+    setAudit(project.audit);
+  }, [project.audit]);
+
+  function runAudit() {
+    startAudit(async () => {
+      setError(null);
+      const response = await fetch(`/api/projects/${project.id}/audit`, { method: "POST" });
+      if (!response.ok) {
+        setError(await readError(response));
+        return;
+      }
+      const next = (await response.json()) as ProjectDTO;
+      setAudit(next.audit);
+      router.refresh();
+    });
+  }
+
+  useEffect(() => {
+    if (!project.deck || project.audit || audit || auditing) {
+      return;
+    }
+    runAudit();
+  }, [project.id, Boolean(project.deck), Boolean(project.audit), Boolean(audit), auditing]);
 
   const deck = project.deck;
   if (!deck) {
@@ -53,6 +82,7 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
         return;
       }
       setFeedback("");
+      setAudit(null);
       router.refresh();
     });
   }
@@ -92,6 +122,8 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
         ))}
       </div>
 
+      <AuditPanel audit={audit} loading={auditing} onRefresh={runAudit} />
+
       <section className="panel space-y-3 p-5">
         <h2 className="text-sm font-medium">不满意？写意见重生成</h2>
         <textarea
@@ -107,7 +139,11 @@ export function PreviewStudio({ project }: { project: ProjectDTO }) {
 
       <section className="panel space-y-3 p-5">
         <h2 className="text-sm font-medium">可选：导出 PPT</h2>
-        <p className="text-sm text-[var(--olive)]">指定页数后生成可编辑 PPTX。网页预览已经可以开会用。</p>
+        <p className="text-sm text-[var(--olive)]">
+          {audit?.status === "needs_revision"
+            ? "还有阻塞项。可以先改主线或按意见重生成，仍要导出也可以。"
+            : "指定页数后生成可编辑 PPTX。网页预览已经可以开会用。"}
+        </p>
         <label className="block max-w-40 space-y-2 text-sm">
           <span className="font-medium">页数（4–12）</span>
           <input

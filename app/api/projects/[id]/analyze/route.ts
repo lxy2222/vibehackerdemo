@@ -1,4 +1,5 @@
 import { reanalyzeProject } from "@/lib/projects/service";
+import type { ReportAnalysis } from "@/lib/schemas/analysis";
 import { errorMessage, jsonError, jsonOk } from "@/lib/http/respond";
 
 export const runtime = "nodejs";
@@ -14,8 +15,15 @@ export async function POST(
       reportBackground?: string;
       materials?: string;
       analysis?: unknown;
+      lockedIntent?: unknown;
     };
-    const project = await reanalyzeProject(id, body);
+    const project = await reanalyzeProject(id, {
+      reportBackground: body.reportBackground,
+      materials: body.materials,
+      analysis: body.analysis,
+      lockedIntent:
+        typeof body.lockedIntent === "string" ? (body.lockedIntent as ReportAnalysis["intent"]) : undefined,
+    });
     return jsonOk(project);
   } catch (error) {
     return jsonError(errorMessage(error, "重新分析失败"), 500);

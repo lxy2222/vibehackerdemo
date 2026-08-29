@@ -28,16 +28,17 @@ function NotionIcon() {
 export function NotionConnect({
   returnTo,
   onImported,
+  onBeforeConnect,
 }: {
   returnTo: string;
   onImported: (text: string, sources: NotionPage[]) => void;
+  onBeforeConnect?: () => void;
 }) {
   const [connected, setConnected] = useState(false);
   const [oauthConfigured, setOauthConfigured] = useState(true);
   const [workspace, setWorkspace] = useState<string | null>(null);
   const [pages, setPages] = useState<NotionPage[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
-  const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [loading, startLoading] = useTransition();
@@ -59,8 +60,8 @@ export function NotionConnect({
     return data.connected;
   }
 
-  async function refreshPages(search = "") {
-    const response = await fetch(`/api/notion/pages?q=${encodeURIComponent(search)}`);
+  async function refreshPages() {
+    const response = await fetch("/api/notion/pages");
     if (!response.ok) {
       setError(await readError(response));
       return;
@@ -92,6 +93,7 @@ export function NotionConnect({
       setError("还没有配置 Notion OAuth。在 Notion 创建一个 Public integration，把 Client ID / Secret 写进 .env。");
       return;
     }
+    onBeforeConnect?.();
     window.location.href = `/api/notion/auth?return=${encodeURIComponent(returnTo)}`;
   }
 
@@ -134,8 +136,8 @@ export function NotionConnect({
           <NotionIcon />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium">连接你的 Notion</p>
-          <p className="mt-1 text-sm leading-6 text-[var(--olive)]">
+          <p className="text-base font-medium">连接你的 Notion</p>
+          <p className="mt-1 text-base leading-7 text-[var(--olive)]">
             {connected
               ? `已连接${workspace ? `「${workspace}」` : ""}。勾选页面后导入为汇报材料。`
               : "点击后打开 Notion 授权。授权时勾选要分享的页面，回来就能选择导入。"}
@@ -154,26 +156,6 @@ export function NotionConnect({
 
       {connected ? (
         <div className="space-y-3">
-          <div className="flex gap-2">
-            <input
-              className="field"
-              value={query}
-              placeholder="搜索页面标题"
-              onChange={(event) => setQuery(event.target.value)}
-            />
-            <button
-              className="btn-secondary shrink-0"
-              type="button"
-              disabled={loading}
-              onClick={() => {
-                startLoading(async () => {
-                  await refreshPages(query);
-                });
-              }}
-            >
-              搜索
-            </button>
-          </div>
           <ul className="max-h-56 space-y-2 overflow-auto">
             {pages.length === 0 ? (
               <li className="text-sm text-[var(--olive)]">

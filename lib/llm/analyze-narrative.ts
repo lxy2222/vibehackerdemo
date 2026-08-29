@@ -1,6 +1,9 @@
 import {
+  INTENT_FOCUS,
+  INTENT_LABELS,
   reportAnalysisSchema,
   type ReportAnalysis,
+  type ReportIntent,
 } from "@/lib/schemas/analysis";
 import { completeJsonWithRetry, flashModel } from "@/lib/llm/client";
 
@@ -46,7 +49,18 @@ export async function analyzeNarrative(input: {
   materials: string;
   durationMinutes: number;
   current?: ReportAnalysis;
+  lockedIntent?: ReportIntent;
 }): Promise<ReportAnalysis> {
+  const locked = input.lockedIntent;
+  const intentRule = locked
+    ? `- intent 必须是 ${locked}（${INTENT_LABELS[locked]}）。${INTENT_FOCUS[locked]} 用户换了汇报目的，必须按新目的重写 leaderQuestion、coreConclusion、keyFindings、risks、nextActions、decisionAsk，不要沿用上一版给其他目的写的句子。`
+    : "- intent 只能是 result、progress、retrospective、decision、product_conversion。按材料判断最合适的目的。";
+  const instruction = locked
+    ? `用户刚把汇报目的改成「${INTENT_LABELS[locked]}」。按这个目的重新组织整份主线，不要只改 intent 字段。`
+    : input.current
+      ? "用户改过主线或补过材料。在现有主线基础上重分析，保留用户明确改过且材料仍支持的句子，不要编造。"
+      : "从汇报背景和对话中总结封面标题，并识别领导要判断的问题。";
+
   const parsed = await completeJsonWithRetry(
     {
       model: flashModel(),
@@ -58,7 +72,7 @@ export async function analyzeNarrative(input: {
 - title 必须从汇报背景和材料里总结这次汇报的主题，8–16 个汉字，像「跨国家复用交付进展」。用名词短语，不要用结论整句，不要加「汇报」「PPT」后缀，不要从结论截断。
 - 不要编造材料里没有的数字、人名、国家或结论。
 - 材料不足、口径对不上、可能被追问的事项，一律写成风险点，写入 risks。不要使用「缺口」这个词。
-- intent 只能是 result、progress、retrospective、decision、product_conversion。
+${intentRule}
 - keyFindings、risks、nextActions、missingInformation 各最多 5 条，短句。missingInformation 只作内部字段，内容也按风险点来写。
 - decisionAsk 没有拍板事项时返回空字符串。
 - excludedDetails 写下不该上台的细节，没有则空数组。
@@ -71,14 +85,16 @@ export async function analyzeNarrative(input: {
             materials: input.materials,
             durationMinutes: input.durationMinutes,
             currentAnalysis: input.current ?? null,
-            instruction: input.current
-              ? "用户改过主线或补过材料。在现有主线基础上重分析，保留用户明确改过且材料仍支持的句子，不要编造。"
-              : "从汇报背景和对话中总结封面标题，并识别领导要判断的问题。",
+            lockedIntent: locked ?? null,
+            instruction,
           }),
         },
       ],
     },
-    (value) => normalizeAnalysis(reportAnalysisSchema.parse(value)),
+    (value) => {
+      const next = normalizeAnalysis(reportAnalysisSchema.parse(value));
+      return locked ? { ...next, intent: locked } : next;
+    },
   );
 
   return parsed;

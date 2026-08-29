@@ -15,7 +15,9 @@ export function AppShell({
         aria-hidden
         className="pointer-events-none absolute bottom-10 right-[-3rem] h-52 w-52 rounded-[2.5rem] bg-[var(--cream)]/70"
       />
-      <main className={`relative mx-auto flex min-h-screen flex-col gap-8 px-6 py-12 ${wide ? "max-w-4xl" : "max-w-2xl"}`}>
+      <main
+        className="relative mx-auto flex min-h-screen w-full flex-col gap-10 px-8 py-12 sm:px-12 lg:px-16 xl:px-20 lg:py-16"
+      >
         {children}
       </main>
     </div>

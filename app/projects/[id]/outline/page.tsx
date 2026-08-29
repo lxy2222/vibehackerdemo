@@ -22,10 +22,10 @@ export default async function OutlinePage({
 
   return (
     <AppShell>
-      <div className="space-y-3">
+      <div className="max-w-3xl space-y-4">
         <p className="kicker">确认汇报主线</p>
-        <h1 className="text-3xl font-semibold tracking-tight">先看领导要判断什么</h1>
-        <p className="text-sm leading-6 text-[var(--olive)]">
+        <h1 className="text-4xl font-semibold tracking-tight">先看领导要判断什么</h1>
+        <p className="text-base leading-7 text-[var(--olive)]">
           改结论或补一句材料后可以重新分析。数字只保留材料里出现过的。
         </p>
       </div>

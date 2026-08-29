@@ -1,12 +1,17 @@
-import { DEMO_MATERIALS, DEMO_REPORT_BACKGROUND } from "@/lib/demo/narrative";
+import { getAuditCase } from "@/lib/demo/audit-cases";
 import { jsonOk } from "@/lib/http/respond";
 
 export const runtime = "nodejs";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const fixture = getAuditCase(url.searchParams.get("case"));
   return jsonOk({
-    reportBackground: DEMO_REPORT_BACKGROUND,
-    materials: DEMO_MATERIALS,
-    durationMinutes: 10,
+    id: fixture.id,
+    label: fixture.label,
+    hint: fixture.hint,
+    reportBackground: fixture.reportBackground,
+    materials: fixture.materials,
+    durationMinutes: fixture.durationMinutes,
   });
 }

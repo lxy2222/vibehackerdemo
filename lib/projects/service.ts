@@ -5,10 +5,13 @@ import { deckFromAnalysis } from "@/lib/presentation/from-analysis";
 import type { Fact } from "@/lib/presentation/types";
 import { briefSchema, type Brief } from "@/lib/schemas/brief";
 import {
+  REPORT_INTENTS,
   reportAnalysisSchema,
   type ReportAnalysis,
 } from "@/lib/schemas/analysis";
+import { auditReportSchema, type AuditReport } from "@/lib/schemas/audit";
 import type { DeckSpec } from "@/lib/schemas/deck";
+import { auditProject } from "@/lib/llm/audit";
 import { DEMO_MATERIALS, DEMO_REPORT_BACKGROUND } from "@/lib/demo/narrative";
 import { saveArtifact } from "@/lib/storage/files";
 import {
@@ -46,6 +49,11 @@ function parseAnalysis(raw: string | null): ReportAnalysis | null {
   return parsed.success ? parsed.data : null;
 }
 
+function parseAudit(raw: string | null): AuditReport | null {
+  const parsed = auditReportSchema.safeParse(parseJson(raw, null));
+  return parsed.success ? parsed.data : null;
+}
+
 export function toDTO(project: ProjectRecord): ProjectDTO {
   return {
     id: project.id,
@@ -55,6 +63,7 @@ export function toDTO(project: ProjectRecord): ProjectDTO {
     materials: project.notesChunks ?? "",
     brief: parseJson<Brief | null>(project.brief, null),
     analysis: parseAnalysis(project.analysis),
+    audit: parseAudit(project.audit),
     facts: parseJson<Fact[]>(project.facts, []),
     deck: parseJson<DeckSpec | null>(project.deckSpec, null),
     deckId: project.deckId,
@@ -78,12 +87,17 @@ function requireAnalysis(project: ProjectRecord): ReportAnalysis {
   return analysis;
 }
 
-async function runAnalysis(project: ProjectRecord, current?: ReportAnalysis) {
+async function runAnalysis(
+  project: ProjectRecord,
+  current?: ReportAnalysis,
+  lockedIntent?: ReportAnalysis["intent"],
+) {
   const analysis = await analyzeNarrative({
     reportBackground: project.leaderRequest,
     materials: project.notesChunks ?? "",
     durationMinutes: project.durationMinutes,
     current,
+    lockedIntent,
   });
   const deck = deckFromAnalysis({
     reportBackground: project.leaderRequest,
@@ -95,6 +109,7 @@ async function runAnalysis(project: ProjectRecord, current?: ReportAnalysis) {
     analysis: JSON.stringify(analysis),
     deckSpec: JSON.stringify(deck),
     facts: JSON.stringify([]),
+    audit: null,
     errorMessage: null,
   });
   return getProjectDTO(project.id)!;
@@ -141,6 +156,7 @@ export async function reanalyzeProject(
     reportBackground?: string;
     materials?: string;
     analysis?: unknown;
+    lockedIntent?: ReportAnalysis["intent"];
   },
 ): Promise<ProjectDTO> {
   const project = getProjectRow(projectId);
@@ -153,6 +169,10 @@ export async function reanalyzeProject(
   const current = input.analysis
     ? reportAnalysisSchema.parse(input.analysis)
     : parseAnalysis(project.analysis) ?? undefined;
+  const lockedIntent = REPORT_INTENTS.includes(input.lockedIntent as ReportAnalysis["intent"])
+    ? (input.lockedIntent as ReportAnalysis["intent"])
+    : undefined;
+  const seed = lockedIntent && current ? { ...current, intent: lockedIntent } : current;
   if (!reportBackground) {
     throw new Error("请填写最初的汇报背景");
   }
@@ -161,12 +181,13 @@ export async function reanalyzeProject(
     status: "generating",
     leaderRequest: reportBackground,
     notesChunks: materials,
-    analysis: current ? JSON.stringify(current) : project.analysis,
+    analysis: seed ? JSON.stringify(seed) : project.analysis,
+    audit: null,
     errorMessage: null,
   });
 
   try {
-    return await runAnalysis(getProjectRow(projectId)!, current);
+    return await runAnalysis(getProjectRow(projectId)!, seed, lockedIntent);
   } catch (error) {
     updateProjectRow(projectId, {
       status: "failed",
@@ -204,6 +225,7 @@ export async function saveAnalysis(
     analysis: JSON.stringify(analysis),
     deckSpec: JSON.stringify(deck),
     facts: JSON.stringify([]),
+    audit: null,
     errorMessage: null,
   });
   return getProjectDTO(projectId)!;
@@ -260,6 +282,9 @@ export async function exportProjectPptx(projectId: string, _pageCount: number): 
   try {
     const facts = parseJson<Fact[]>(project.facts, []);
     const buffer = await generatePptxBuffer(deck, facts);
+    if (!buffer.length) {
+      throw new Error("已导出的 PPTX 是空文件");
+    }
     const deckId = crypto.randomUUID();
     const pptxPath = await saveArtifact(deckId, buffer);
     insertDeckRow({
@@ -283,6 +308,43 @@ export async function exportProjectPptx(projectId: string, _pageCount: number): 
     });
     throw error;
   }
+}
+
+export async function auditProjectById(projectId: string): Promise<ProjectDTO> {
+  const project = getProjectRow(projectId);
+  if (!project) {
+    throw new Error("项目不存在");
+  }
+
+  let pptxBytes: number | null = null;
+  if (project.deckId) {
+    const row = getDeckRow(project.deckId);
+    if (row) {
+      try {
+        const bytes = await fs.readFile(row.pptxPath);
+        pptxBytes = bytes.length;
+      } catch {
+        pptxBytes = 0;
+      }
+    }
+  }
+
+  const report = await auditProject({
+    reportBackground: project.leaderRequest,
+    materials: project.notesChunks ?? "",
+    durationMinutes: project.durationMinutes,
+    analysis: parseAnalysis(project.analysis),
+    deck: parseJson<DeckSpec | null>(project.deckSpec, null),
+    facts: parseJson<Fact[]>(project.facts, []),
+    pptxBytes,
+  });
+
+  updateProjectRow(projectId, {
+    status: "ready",
+    audit: JSON.stringify(report),
+    errorMessage: null,
+  });
+  return getProjectDTO(projectId)!;
 }
 
 export async function readDeckPptx(deckId: string): Promise<{ filename: string; bytes: Buffer }> {
