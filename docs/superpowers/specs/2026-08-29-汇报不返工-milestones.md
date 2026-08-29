@@ -170,25 +170,24 @@ M5c 证据和结构     ← 原 M5b + 原 M5c，完整验收
 
 做：
 
-- 用 Notion Internal Integration：服务端读 `NOTION_API_KEY`，集成必须能访问用户勾选的页面
-- 创建页增加「从 Notion 导入」：搜索/列出可访问页面，选中后拉取块内容，转成纯文本填进材料框
-- 也支持粘贴 Notion 页面链接，解析 page id 后导入
-- 导入后仍可编辑材料，再点「分析汇报主线」；分析链路不改
-- 记下来源（页面标题 + URL），确认页能看到材料来自哪篇 Notion
+- 创建页第二步和确认页增加「连接你的 Notion」模块（带 icon）
+- 点击后跳转 Notion OAuth 授权页；用户在 Notion 里勾选要分享的页面
+- 授权成功回到本站，列出可访问页面，勾选后导入正文到材料框
+- 导入后仍可编辑，再点分析；Token 只放 httpOnly cookie，不进前端
+- 可选：本地用 `NOTION_API_KEY`（Internal Integration）跳过 OAuth 做调试
 
 不做：
 
-- OAuth / 多账号 / 选整个 workspace 全量同步
+- 多账号切换 / 全量 workspace 同步
 - 往 Notion 回写汇报或生成 Notion 页
 - 证据模块、漏斗门禁、新 PPT 结构
 
 **验收：**
 
 - 不连 Notion 时，纯粘贴路径和 M5a 一样能用
-- 连上后能搜到集成已分享的页面，导入正文，分析出主线
-- 粘贴一个已分享页面的链接也能导入
-- 不把 Notion 里没有的数字编进分析
-- Key 只在服务端，不进前端日志
+- 点「去授权」能打开 Notion 授权；成功后能选页面并导入
+- 导入文本带页面标题和链接来源
+- Key / token 只在服务端，不进前端日志
 
 ---
 

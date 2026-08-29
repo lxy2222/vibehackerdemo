@@ -9,6 +9,7 @@ import {
   type ReportIntent,
 } from "@/lib/schemas/analysis";
 import type { ProjectDTO } from "@/lib/projects/types";
+import { NotionConnect } from "@/components/notion-connect";
 
 async function readError(response: Response) {
   const data = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -132,12 +133,18 @@ export function ConfirmForm({ project }: { project: ProjectDTO }) {
     <div className="space-y-6">
       <section className="panel space-y-3 p-5">
         <h2 className="text-sm font-medium">工作对话或材料</h2>
+        <NotionConnect
+          returnTo={`/projects/${project.id}/outline`}
+          onImported={(text) => {
+            setMaterials((current) => (current.trim() ? `${current.trim()}\n\n${text}` : text));
+          }}
+        />
         <textarea
           className="field min-h-28"
           value={materials}
           onChange={(event) => setMaterials(event.target.value)}
         />
-        <p className="text-sm text-[var(--olive)]">可以补一句材料后重新分析。</p>
+        <p className="text-sm text-[var(--olive)]">可以补一句材料或从 Notion 导入后重新分析。</p>
       </section>
 
       <form className="panel space-y-5 p-5">

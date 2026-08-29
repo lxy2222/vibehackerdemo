@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { NotionConnect } from "@/components/notion-connect";
 
 async function readError(response: Response) {
   const data = (await response.json().catch(() => null)) as { error?: string } | null;
@@ -83,8 +84,15 @@ export function CreateForm() {
         />
       </label>
 
-      <label className="block space-y-2">
+      <div className="space-y-3">
         <span className="text-sm font-medium">工作对话或材料</span>
+        <NotionConnect
+          returnTo="/"
+          onImported={(text) => {
+            setMaterials((current) => (current.trim() ? `${current.trim()}\n\n${text}` : text));
+            setUseDemo(false);
+          }}
+        />
         <textarea
           className="field min-h-40"
           value={materials}
@@ -92,9 +100,9 @@ export function CreateForm() {
             setMaterials(event.target.value);
             setUseDemo(false);
           }}
-          placeholder="粘贴一段工作沟通、会议记录或自己的草稿。没有完整数据也可以。"
+          placeholder="粘贴一段工作沟通、会议记录，或先连接 Notion 导入页面。"
         />
-      </label>
+      </div>
 
       <label className="block space-y-2 text-sm">
         <span className="font-medium">汇报时长（分钟，可选）</span>
